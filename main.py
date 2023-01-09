@@ -22,8 +22,19 @@ nodePort = 5005
 
 
 transactions = {}
+peerlist = []
+peerfile = "peerlist.json"
 
-config = {"dataBaseFile": "database.json", "peers": [""], "InitTxID": "none"}
+def peeradd():
+    global peerlist
+    with open(peerfile, "r") as peer_conf:
+        data=json.load(peer_conf)
+    peerlist = data["Peers"]
+    print("Connected Peers from peerlist.json: "+str(peerlist))
+    threading.Timer(60,peeradd)
+peeradd()
+
+config = {"dataBaseFile": "database.json", "peers": peerlist, "InitTxID": "none"}
 
 
 def rgbPrint(string, color, end="\n"):
@@ -666,7 +677,7 @@ class Node(object):
         self.checkTxs(self.pullSetOfTxs(self.pullTxsByBlockNumber(0)))
         for blockNumber in range(self.bestBlockChecked,self.getChainLength()):
             _toCheck_ = self.pullSetOfTxs(self.pullTxsByBlockNumber(blockNumber))
-            rgbPrint(f"Synced block: {blockNumber}", "purple4")
+            rgbPrint(f"Synced block: {blockNumber} (Syncing with blockchain!)", "purple4")
             self.checkTxs(_toCheck_)
             self.bestBlockChecked = blockNumber
 
@@ -953,4 +964,5 @@ def handleWeb3Request(data: Web3Body):
     return {"id": _id, "jsonrpc": "2.0", "result": result}
 
 if __name__ == '__main__':
+    peeradd()
     uvicorn.run(app, host=nodeHost, port=nodePort)
