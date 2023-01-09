@@ -47,7 +47,7 @@ if it says fcntl not found do:
 pip uninstall skein && pip install pyskein
 ```
 ## Authors
-The amazing people who helped
+The amazing people who helped<br/>
     [@superpythonguy](https://github.com/superpythonguy)<br/>
     [@the-red-eye-studio](https://github.com/the-red-eye-studio)
 
