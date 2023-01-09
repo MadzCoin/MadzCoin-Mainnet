@@ -22,7 +22,16 @@ also check out the explorer  <a href="http://madzcoin-explorer.aj.do/Explorer-te
 
 To get started mining first create a wallet with metamask(Native desktop wallet coming soon!) and<br/>
 add the network manuelly(if you dont know how to do that search on ~~google~~ duckduckgo "how to
-mannuely add networks to metamask" )<br/> once done download the miner from the link above and enter Madzcoin Address
+mannuely add networks to metamask" )<br/> 
+
+Network name: Madzcoin-mainnet<br/>
+RPC-url: https://madzcoin-node.superpythonguy.repl.co/web3<br/> 
+Chain ID: 5151<br/> 
+Ticker: MADZ<br/> 
+Block explorer url: http://madzcoin-explorer.aj.do/Explorer-testnet<br/> 
+
+_______________________
+once done download the miner from the link above and enter Madzcoin Address
 
 ### Dependencies
 * python
