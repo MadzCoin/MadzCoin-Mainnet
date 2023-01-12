@@ -16,7 +16,7 @@ CoinName = "MadzCoin"
 IdealBlockTime = 300
 BlockReward = 10.5
 
-nodeHost = "10.9.115.178"
+nodeHost = "10.9.9.186"
 #nodeHost ="0.0.0.0"
 nodePort = 5005
 
@@ -25,14 +25,43 @@ transactions = {}
 peerlist = []
 peerfile = "peerlist.json"
 
+def peersearch():
+    global peerlist
+    try:
+        for i in peerlist:
+            print("Current nodes: "+i)
+            obtainedPeers = requests.get(f"{i}/net/getOnlinePeers").json()
+            obpeers = obtainedPeers["result"]
+            obpeersn = str(obpeers)[1:-1]
+            obpeersjson = str(obpeersn)[1:-1]
+            print("pinging new node: "+obpeersjson)
+            try:
+                if not(obpeersjson in peerlist):
+                    data = json.load(open(peerfile))
+                    data["Peers"].append(obpeersjson)
+                    json.dump(data,open(peerfile,"w"))
+                
+            except:
+                print("No new nodes to connect to")
+    except:
+        print(f"Nodes in {peerfile} seem offline?")
+        pass
+            
 def peeradd():
     global peerlist
     with open(peerfile, "r") as peer_conf:
         data=json.load(peer_conf)
     peerlist = data["Peers"]
-    print("Connected Peers from peerlist.json: "+str(peerlist))
+    #print("Connected Peers from peerlist.json: "+str(peerlist)+" Note:nodes need to be restarts to add any new peers(will fix this)")#TODO: add this
+    peer_conf.close()
     threading.Timer(60,peeradd)
+    
 peeradd()
+time.sleep(2.5)
+peersearch()
+time.sleep(2.5)
+peeradd() #rerun to add nodes
+time.sleep(0.5)
 
 config = {"dataBaseFile": "database.json", "peers": peerlist, "InitTxID": "none"}
 
