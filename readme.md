@@ -25,7 +25,7 @@ add the network manuelly(if you dont know how to do that search on ~~google~~ du
 mannuely add networks to metamask" )<br/> 
 
 Network name: Madzcoin-mainnet<br/>
-RPC-url: https://madzcoin-node.superpythonguy.repl.co/web3<br/> 
+RPC-url: http://node.shming.us:5005/web3 **or** http://madzcoin-58263.portmap.io:58263/web3<br/> 
 Chain ID: 5151<br/> 
 Ticker: MADZ<br/> 
 Block explorer url: http://madzcoin-explorer.aj.do/Explorer-testnet<br/> 
