@@ -20,7 +20,7 @@ to use continue reading
 
 ### Adding to MetaMask or other web3 wallets
 > Network name: MadzCoin-mainnet 
-> RPC-url: http://madzcoin-58263.portmap.io:58263/ or http://78.58.45.205:5000/
+> RPC-url: http://madzcoin-58263.portmap.io:58263/ or http://78.58.45.205:5000/ <br/>
 > Chain ID: 5151    
 > Ticker: MADZ   
 
