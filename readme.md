@@ -1,8 +1,8 @@
 # MadzCoin
-Three word define Madzcoin and our organisation **privacy security and concurrency**<br/>
-Madzcoin is designed to be a human readable decentralised cryptocurrency that redefines the meaning of fast, feeless and Anonymous transactions<br/>
-to make sure everyone's privacy belongs to themselves **not** big companies
-to use continue reading
+Three words define MadzCoin and our organization -  **privacy, security and concurrency**<br/>
+MadzCoin is designed to be a human readable decentralized cryptocurrency that redefines the meaning of fast, feeless and Anonymous transactions<br/>
+to make sure everyone's privacy belongs to themselves and **not** big corporations.
+
 
 ## Specifications 
 
