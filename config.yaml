@@ -1,0 +1,4 @@
+config:
+    nodehost: "10.9.7.94" # Enter the nodeip aka your ip or portmap public ip
+    nodeport: 5005 # node port
+    protocol: "http" # protocol http/https
