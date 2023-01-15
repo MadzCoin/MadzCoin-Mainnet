@@ -1,14 +1,35 @@
-######################################
+####################################################################
 
 # Thanks to Sirious coin for the source code 
 # checkout their project at https://github.com/Sirious-io
 
-######################################
+#####################################################################
+#                       Sections and what they mean:
+#
+#   -Vars and Imports:
+#       Contains varibles and imported libs
+#   
+#   -Config parsing:
+#       Parses configs from "config.yaml"
+#   
+#   -Subcores:
+#       Provide useful functions to maintain node/network health
+#
+#   -Core:
+#       Contains code **VITAL** to node operation(You can go without this)
+#
+#   -Web:
+#       Provides interface to(and from) the outside world
+#
+#   -Init:
+#       Funcs for starting node
+#
 
+######################### Vars and imports ###########################
 from web3.auto import w3
 from rlp.sedes import Binary, big_endian_int, binary
 from fastapi.middleware.cors import CORSMiddleware
-import requests, time, json, threading, uvicorn, fastapi, pydantic, yaml, os, rich, rlp, eth_utils, dataclasses, typing, eth_account.messages, groestlcoin_hash, skein
+import requests, time, json, threading, uvicorn, fastapi, pydantic, yaml, os, sys, rich, rlp, eth_utils, dataclasses, typing, eth_account.messages, groestlcoin_hash, skein
 
 Web3ChainID = 5151
 CoinName = "MadzCoin"
@@ -21,7 +42,7 @@ peerlist = []
 peerfile = "peerlist.json"
 config_file = "config.yaml"
 
-########## getting config ############
+######################### Config Parsing ###########################
 if os.path.exists(config_file):
     print(f"***reading {config_file} please standby!***")
     with open(config_file, "r") as configs:
@@ -34,24 +55,16 @@ if os.path.exists(config_file):
         
         print("NodeHost: "+nodeHost)
         print("NodePort: "+str(nodePort))
-        print("Protocol:" +protocol)       
-def peeradd():
+        print("Protocol:" +protocol)
+   
+######################### Subcore1 - useful funcs for peerdiscovery ###########################       
+def peerupdate():
     global peerlist
     with open(peerfile, "r") as peer_conf:
-        data=json.load(peer_conf)
-        
-        try:
-            for i in data["Peers"]:
-                if i.count > 1:
-                    data["Peers"].remove(i)
-        except:
-            print("no duplicates")
-        
-        return data["Peers"]
-    
+        data=json.load(peer_conf)               
     peerlist = data["Peers"]       
-    peer_conf.close()
-    threading.Timer(60,peeradd)
+    peer_conf.close() 
+    return peerlist
 
 def newpeersend():
     global peerlist
@@ -69,7 +82,7 @@ time.sleep(1)
 def rgbPrint(string, color, end="\n"):
     rich.print("[" + color + "]" + str(string) + "[/" + color + "]", end=end)
 
-
+######################### Core ###########################
 class SignatureManager(object):
     def __init__(self):
         self.verified = 0
@@ -552,7 +565,7 @@ class Node(object):
 
     def peersearch():
         global peerlist
-        peeradd()
+        peerupdate()
         try:
             for i in peerlist:
                 print("Current nodes: "+i)
@@ -562,16 +575,15 @@ class Node(object):
                 obpeersjson = str(obpeersn)[1:-1]
                 print("pinging new node: "+obpeersjson)
 
-            for i in obpeersjson:
-                if not(obpeersjson in peerlist):
-                    data = json.load(open(peerfile))
-                    data["Peers"].append(obpeersjson)
-                    json.dump(data,open(peerfile,"w"))
+            if not(obpeersjson in peerlist) and obpeersjson != protocol+"://"+parsednodehost+str(nodePort):
+                data = json.load(open(peerfile))
+                data["Peers"].append(obpeersjson)
+                json.dump(data,open(peerfile,"w"))
                    
         except:
             print(f"Nodes in {peerfile} seem offline?")
             pass
-        peeradd()
+        peerupdate()
         newpeersend()
 
     def initNode(self):
@@ -588,8 +600,6 @@ class Node(object):
         self.saveDB()
         self.syncByBlock()
         self.saveDB()
-
-
 
     def checkTxs(self, txs):
         _counter = 0
@@ -654,7 +664,7 @@ class Node(object):
         self.goodPeers = []
         for peer in peerlist:
             try:
-                print(f"checkGuys before if statement n2, node {peer}")
+                #print(f"checkGuys before if statement n2, node {peer}")
                 if (requests.get(f"{peer}/ping").json()["success"]):
                     self.goodPeers.append(peer)
             except:
@@ -817,7 +827,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-
+######################### Web ###########################
 @app.get("/")
 def basicInfoHttp():
     return  f"{CoinName} cryptocurrency MainNet running on port http: 5005 / https: 5006, local http: {nodePort} (Have fun using the network!)"
@@ -980,6 +990,11 @@ def shareMyPeers():
 def shareOnlinePeers():
     return jsonify(result=node.goodPeers, success=True)
 
+@app.get("/net/verify")
+def create_upload_file():
+   dat = json.load(open("database.json"))
+   return dat
+
 @app.get("/net/NewPeer/{newnodeurl}/{nodeport}/{NodeVer}/{proto}")
 def newnodes(newnodeurl : str, nodeport : int, NodeVer : str, proto : str):
     try:
@@ -990,38 +1005,65 @@ def newnodes(newnodeurl : str, nodeport : int, NodeVer : str, proto : str):
             newnodeurl = "https://"+newnodeurl+":"+str(nodeport)
         
         print(newnodeurl)
-
-        nodeping = requests.get(f"{newnodeurl}/ping").json()
-        NodeVer = requests.get(f"{newnodeurl}/NodeVer").json()
-        print("Pinging "+newnodeurl)
-        if nodeping["success"] == True:
-            if NodeVer["result"] == VER:
-                verack = "OK" 
-             
-                if proto == "http" or proto == "https":
-                    data = json.load(open(peerfile))
-                    data["Peers"].append(newnodeurl)
-                    json.dump(data, open(peerfile, "w"))
-                    peerlist.append(newnodeurl)
-                    
-                peeradd()
-            
-                requests.get(f"{newnodeurl}/net/NewPeerok/{verack}")
+        try:
+            nodeping = requests.get(f"{newnodeurl}/ping").json()
+            NodeVer = requests.get(f"{newnodeurl}/NodeVer").json()
+            Newblockchain = requests.get(f"{newnodeurl}/net/verify")#used to download new peers blockchain and verify it
         
+            with open("New-Nodedb","w") as newnodedb:
+                newnodedb.write(Newblockchain.content)
+                newnodedb.close
+        
+            ournode = json.load(open("database.json","r"))
+            verifynode = json.load(open("New-Nodedb","r"))
+        
+        except:
+            print("Could not Verify/ping new node")
+        
+        if ournode == verifynode:
+        
+            print("Pinging "+newnodeurl)
+            if nodeping["success"] == True:
+                if NodeVer["result"] == VER:
+                    verack = "OK" 
+             
+                    if proto == "http" or proto == "https":
+                        data = json.load(open(peerfile))
+                        data["Peers"].append(newnodeurl)
+                        json.dump(data, open(peerfile, "w"))
+                        peerlist.append(newnodeurl)
+                    
+                    peerupdate()
+            
+                    requests.get(f"{newnodeurl}/net/NewPeerok/{verack}")
+        
+                else:
+                    rgbPrint("**Node's Version is not compatible with yours!**","red")
+                    verack = "NO"
+                    requests.get(f"{newnodeurl}/net/NewPeerok/{verack}")
             else:
-                rgbPrint("**Node's Version is not compatible with yours!**","red")
-                verack = "NO"
-                requests.get(f"{newnodeurl}/net/NewPeerok/{verack}")
-        else:
-            print(f"A node requested you to add their ip to {peerfile} but it seems down?(sussy)")
+                print(f"A node requested you to add their ip to {peerfile} but it seems down?(sussy)")
     except:
         print("Error trying to request node to connect to self(sus?)")
+
+    if ournode != verifynode:
+        print(f"New node's Blockchain seems wrong?\n requesting {newnodeurl} to resync")
+
+
+@app.get("/net/NewPeer/{nodeverifystatus}")
+def checkverify(nodeverifystatus : str):
+    if nodeverifystatus == "OK":
+        print("**Node is verified and Ready!**")
+    else:
+        rgbPrint("**Nodes database.json seems wrong will restart and resync for you!**","red")
+        time.sleep(3)
+        os.remove("database.json")
+        os.execv(sys.argv[0], sys.argv)
     
 @app.get("/net/NewPeerok/{newverack}")
 def nodecompcheck(newverack : str ):
     if newverack == "OK":
-        print("new handshake established!")
-    
+        print("new handshake established!")   
     else:  
         print("Node is incompatible with yours")
 
@@ -1070,6 +1112,8 @@ def handleWeb3Request(data: Web3Body):
 
     return {"id": _id, "jsonrpc": "2.0", "result": result}
 
+
+######################### INIT ###########################
 if __name__ == '__main__':
     def start():
         uvicorn.run(app, host=nodeHost, port=nodePort)
