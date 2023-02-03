@@ -29,58 +29,98 @@
 from web3.auto import w3
 from rlp.sedes import Binary, big_endian_int, binary
 from fastapi.middleware.cors import CORSMiddleware
-import requests, time, json, threading, uvicorn, fastapi, pydantic, yaml, os, sys, rich, rlp, eth_utils, dataclasses, typing, eth_account.messages, groestlcoin_hash, skein
+from eth_account import Account
+import mock, getpass, requests, secrets, time, json, threading, uvicorn, fastapi, pydantic, yaml, os, sys, rich, rlp, eth_utils, dataclasses, typing, eth_account.messages, eth_account, groestlcoin_hash, skein
+
+
+file_paths = mock.Mock()
+file_paths.config = "config.yaml"
+file_paths.peerlist = "peerlist.json"
+file_paths.database = "database.json"
+file_paths.privkey = "acc.priv"
+
 
 Web3ChainID = 5151
 CoinName = "MadzCoin"
 IdealBlockTime = 300
 BlockReward = 10.5
-VER = "0.10"
+MOTD = None  
+VER = "0.11"
 
-transactions = {}
-peerlist = []
-peerfile = "peerlist.json"
-config_file = "config.yaml"
-
-######################### Config Parsing ###########################
-if os.path.exists(config_file):
-    print(f"***reading {config_file} please standby!***")
-    with open(config_file, "r") as configs:
-        configyaml = yaml.safe_load(configs)
-        
-        nodeHost = configyaml["config"]["nodehost"]
-        nodePort = configyaml["config"]["nodeport"]
-        protocol = configyaml["config"]["protocol"]
-        parsednodehost = nodeHost+":"
-        
-        print("NodeHost: "+nodeHost)
-        print("NodePort: "+str(nodePort))
-        print("Protocol:" +protocol)
-   
-######################### Subcore1 - useful funcs for peerdiscovery ###########################       
-def peerupdate():
-    global peerlist
-    with open(peerfile, "r") as peer_conf:
-        data=json.load(peer_conf)               
-    peerlist = data["Peers"]       
-    peer_conf.close() 
-    return peerlist
-
-def newpeersend():
-    global peerlist
-    print("Requesting node handshake\n")
-    selfnewnodeurl = parsednodehost+str(nodePort)
-    print("self node url: "+selfnewnodeurl)
-    time.sleep(1.5)
-    for i in peerlist:
-        requests.get(f"{i}/net/NewPeer/{nodeHost}/{nodePort}/{VER}/{protocol}")
-    
-        
-config = {"dataBaseFile": "database.json", "peers": peerlist, "InitTxID": "none"}
-time.sleep(1)
 
 def rgbPrint(string, color, end="\n"):
     rich.print("[" + color + "]" + str(string) + "[/" + color + "]", end=end)
+
+def get_priv():
+    if not os.path.exists(file_paths.privkey):
+        rgbPrint("No private key detected, would you like to generate (1) or import one (2)?", "red")
+        inputed = False
+        while not inputed:
+            type = input("Type 1 or 2: ")
+            if type == "1":
+                inputed = True
+                priv = secrets.token_hex(32)
+                public_key = Account.from_key(priv).address
+
+                with open(file_paths.privkey, "w") as f:
+                    f.write(priv)
+
+            elif type == "2":
+                inputed = True
+                priv_inputed = False
+                while not priv_inputed:
+                    priv = getpass.getpass("Enter your private key: ")
+                    priv.replace("0x", "")
+
+                    try:
+                        public_key = Account.from_key(priv).address
+                        with open(file_paths.privkey, "w") as f:
+                            f.write(priv)
+                        priv_inputed = True
+
+                    except:
+                        priv_inputed = False
+    else:
+        with open(file_paths.privkey, "r") as f:
+            priv = f.readlines()[0]
+            public_key = Account.from_key(priv).address
+        
+
+    return {"public": public_key, "private": priv}
+                
+
+
+
+def read_yaml_config(print_host = True):
+    if os.path.exists(file_paths.config):
+        with open(file_paths.config, "r") as configs:
+            global MOTD
+            configyaml = yaml.safe_load(configs)
+                
+            nodeHost = configyaml["config"]["nodehost"]
+            nodePort = configyaml["config"]["nodeport"]
+            protocol = configyaml["config"]["protocol"]
+                
+            try:
+                MOTD = configyaml["config"]["MOTD"]
+            except:
+                pass    
+
+            try:
+                ssl_keyfile = configyaml["config"]["ssl_keyfile"]
+                ssl_certfile = configyaml["config"]["ssl_certfile"]
+                ssl_ca_certs = configyaml["config"]["ssl_ca_certs"]
+            except:
+                ssl_keyfile = None
+                ssl_certfile = None
+
+            
+            if print_host:
+                rgbPrint(f"Public host: {protocol}://{nodeHost}:{nodePort}", "green", end="\n"*2)
+
+            return ({"host": nodeHost, "port": int(configyaml["config"]["nodeport"]), "proto": protocol, "url": f"{protocol}://{nodeHost}:{nodePort}"}, {"ssl_keyfile": ssl_keyfile, "ssl_certfile": ssl_certfile, "ssl_ca_certs": ssl_ca_certs})
+
+
 
 ######################### Core ###########################
 class SignatureManager(object):
@@ -94,7 +134,7 @@ class SignatureManager(object):
         _signature = w3.eth.account.sign_message(message, private_key=private_key).signature.hex()
         signer = w3.eth.account.recover_message(message, signature=_signature)
         sender = w3.toChecksumAddress(json.loads(transaction["data"])["from"])
-        if (signer == sender):
+        if signer == sender:
             transaction["sig"] = _signature
             self.signed += 1
         return transaction
@@ -164,11 +204,11 @@ class Transaction(object):
     def __init__(self, tx):
         txData = json.loads(tx["data"])
         self.txtype = (txData.get("type") or 0)
-        if (self.txtype == 0):
+        if self.txtype == 0:
             self.sender = w3.toChecksumAddress(txData.get("from"))
             self.recipient = w3.toChecksumAddress(txData.get("to"))
             self.value = max(float(txData.get("tokens")), 0)
-        if (self.txtype == 1):
+        elif self.txtype == 1:
             self.sender = w3.toChecksumAddress(txData.get("from"))
             self.blockData = txData.get("blockData")
             self.recipient = "0x" + "0"*40
@@ -182,6 +222,11 @@ class Transaction(object):
             self.nonce = ethDecoded.nonce
             self.ethData = ethDecoded.data
             self.ethTxid = ethDecoded.hash_tx
+        elif self.txtype == 3:
+            self.sender = w3.toChecksumAddress(txData.get("from"))
+            self.recipient = w3.toChecksumAddress(txData.get("to"))
+            self.value = max(float(txData.get("tokens")), 0)
+
 
 
         self.epoch = txData.get("epoch")
@@ -212,7 +257,7 @@ class GenesisBeacon(object):
 
     def proofOfWork(self):
         bRoot = self.beaconRoot()
-        b = (b"".join([bytes.fromhex(bRoot.replace("0x", "")),int(self.nonce).to_bytes(32, 'big')]))
+        b = (b"".join([bytes.fromhex(bRoot.replace("0x", "")), int(self.nonce).to_bytes(32, 'big')]))
         return "0x" + groestlcoin_hash.getHash(b"".join([skein.skein256(b).digest(), self.nonce.to_bytes(32, "big")]), 64).hex()
 
     def difficultyMatched(self):
@@ -230,7 +275,7 @@ class Beacon(object):
         self.nonce = miningData["nonce"]
         self.difficulty = difficulty
         self.messages = bytes.fromhex(data["messages"])
-        self.miningTarget = hex(int(min(int((2**256-1)/self.difficulty),0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff)))
+        self.miningTarget = hex(int(min(int((2**256-1)/self.difficulty), 0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff)))
         self.timestamp = int(data["timestamp"])
         self.parent = data["parent"]
         self.transactions = []
@@ -246,7 +291,7 @@ class Beacon(object):
 
     def proofOfWork(self):
         bRoot = self.beaconRoot()
-        b = (b"".join([bytes.fromhex(bRoot.replace("0x", "")),int(self.nonce).to_bytes(32, 'big')]))
+        b = (b"".join([bytes.fromhex(bRoot.replace("0x", "")), int(self.nonce).to_bytes(32, 'big')]))
         return "0x" + groestlcoin_hash.getHash(b"".join([skein.skein256(b).digest(), self.nonce.to_bytes(32, "big")]), 64).hex()
 
     def difficultyMatched(self):
@@ -270,7 +315,7 @@ class BeaconChain(object):
     def checkBeaconMessages(self, beacon):
         _messages = beacon.messages.decode().split(",")
         for msg in _messages:
-            if (not msg in self.pendingMessages) and (msg != "null"):
+            if not msg in self.pendingMessages and msg != "null":
                 return False
         return True
 
@@ -285,14 +330,16 @@ class BeaconChain(object):
             return (False, "INVALID_MESSAGE")
         if not beacon.difficultyMatched():
             return (False, "UNMATCHED_DIFFICULTY")
-        if ((int(beacon.timestamp) < _lastBeacon.timestamp) or (beacon.timestamp > time.time())):
+        if int(beacon.timestamp) < _lastBeacon.timestamp or beacon.timestamp > time.time():
             return (False, "INVALID_TIMESTAMP")
         return (True, "GOOD")
 
 
-    def isBlockValid(self, blockData):
+    def isBlockValid(self, blockData, diff = None):
+        if diff == None:
+            diff = self.difficulty
         try:
-            return self.isBeaconValid(Beacon(blockData, self.difficulty))
+            return self.isBeaconValid(Beacon(blockData, diff))
         except Exception as e:
             return (False, e)
 
@@ -312,7 +359,7 @@ class BeaconChain(object):
         self.blocksByHash[beacon.proof] = beacon
         self.cummulatedDifficulty += self.difficulty
         self.difficulty = self.calcDifficulty(self.blockTime, _oldtimestamp, int(beacon.timestamp), self.difficulty)
-        self.miningTarget = hex(int(min(int((2**256-1)/self.difficulty),0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff)))
+        self.miningTarget = hex(int(min(int((2**256-1)/self.difficulty), 0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff)))
         return True
 
     def submitBlock(self, block, showMessage):
@@ -325,7 +372,7 @@ class BeaconChain(object):
         if beaconValidity[0]:
             self.addBeaconToChain(_beacon)
             if showMessage:
-                rgbPrint(f"\n-----------\nBlock mined!\nHeight : {_beacon.number}\nMiner : {_beacon.miner}\nReward : {self.blockReward} {CoinName} \n-----------\n", "green")
+                rgbPrint(f"\n-----------\nBlock mined!\nHeight: {_beacon.number}\nMiner: {_beacon.miner}\nReward: {self.blockReward} {CoinName} \n-----------\n", "green")
             return _beacon.miner
         return False
 
@@ -343,7 +390,7 @@ class BeaconChain(object):
 
 
 class State(object):
-    def __init__(self, initTxID):
+    def __init__(self):
         self.balances = {"0x"+"0"*36+"dEaD": 100, "0x"+"0"*40: 0}
         self.transactions = {"0x"+"0"*40: []}
         self.received = {"0x"+"0"*40: []}
@@ -351,7 +398,7 @@ class State(object):
         self.mined = {"0x"+"0"*40: []}
         self.messages = {}
         self.accountBios = {"0x"+"0"*40: "Dead wallet", "0x"+"0"*36+"dEaD": "Dead wallet"}
-        self.initTxID = initTxID
+        self.initTxID = "none"
         self.txChilds = {self.initTxID: []}
         self.txIndex = {}
         self.lastTxIndex = 0
@@ -414,9 +461,9 @@ class State(object):
 
         return (True, "It'll succeed")
 
-    def estimateMiningSuccess(self, tx):
+    def estimateMiningSuccess(self, tx, diff = None):
         self.ensureExistence(tx.sender)
-        return self.beaconChain.isBlockValid(tx.blockData)
+        return self.beaconChain.isBlockValid(tx.blockData, diff=None)
 
     def isBeaconCorrect(self, tx):
         return (not tx.epoch) or (tx.epoch == self.getCurrentEpoch())
@@ -426,7 +473,7 @@ class State(object):
         underlyingOperationSuccess = (False, None)
         correctParent = self.checkParent(_tx)
         correctBeacon = self.isBeaconCorrect(_tx)
-        if _tx.txtype == 0 or _tx.txtype == 2:
+        if _tx.txtype == 0 or _tx.txtype == 2 or _tx.txtype == 3:
             underlyingOperationSuccess = self.estimateTransferSuccess(_tx)
         if _tx.txtype == 1:
             underlyingOperationSuccess = self.estimateMiningSuccess(_tx)
@@ -445,7 +492,7 @@ class State(object):
         self.txIndex[tx.txid] = self.lastTxIndex
         self.lastTxIndex += 1
         self.transactions[tx.sender].append(tx.txid)
-        if (tx.sender != tx.recipient):
+        if tx.sender != tx.recipient:
             self.transactions[tx.recipient].append(tx.txid)
         if tx.txtype == 1:
             miner = tx.blockData.get("miningData").get("miner")
@@ -471,8 +518,8 @@ class State(object):
         self.balances[tx.sender] -= tx.value
         self.balances[tx.recipient] += tx.value
 
-        if (showMessage):
-            rgbPrint(f"\n-----------\nTransfer executed!\nAmount transferred : {tx.value}\nFrom: {tx.sender}\nTo: {tx.recipient} \n-----------\n", "yellow")
+        if showMessage:
+            rgbPrint(f"\n-----------\nTransfer executed!\nAmount transferred: {tx.value}\nFrom: {tx.sender}\nTo: {tx.recipient} \n-----------\n", "yellow")
         return (True, "Transfer succeeded")
 
     def mineBlock(self, tx, showMessage):
@@ -492,15 +539,13 @@ class State(object):
     def playTransaction(self, tx, showMessage):
         _tx = Transaction(tx)
         feedback = False
-        if _tx.txtype == 0:
-            feedback = self.executeTransfer(_tx, showMessage)
         if _tx.txtype == 1:
             feedback = self.mineBlock(_tx, showMessage)
-        if _tx.txtype == 2:
-            feedback = self.executeTransfer(_tx, showMessage)
+        else:
+            feedback = self.executeTransfer(_tx, not _tx.txtype == 3 and showMessage)
 
 
-        if (_tx.bio):
+        if _tx.bio:
             self.accountBios[_tx.sender] = _tx.bio.replace("%20", " ")
         self.updateHolders()
         return feedback
@@ -508,7 +553,7 @@ class State(object):
     def getLastUserTx(self, _user):
         user = w3.toChecksumAddress(_user)
         self.ensureExistence(user)
-        if (len(self.transactions[user]))>0:
+        if len(self.transactions[user]) > 0:
             return self.transactions[user][len(self.transactions[user])-1]
         else:
             return self.initTxID
@@ -516,7 +561,7 @@ class State(object):
     def getLastSentTx(self, _user):
         user = w3.toChecksumAddress(_user)
         self.ensureExistence(user)
-        if (len(self.sent[user]))>0:
+        if len(self.sent[user]) > 0:
             return self.sent[user][len(self.sent[user])-1]
         else:
             return self.initTxID
@@ -534,138 +579,224 @@ class Peer(object):
     def __init__(self, url):
         self.url = url
 
+class peer_discovery(object):
+    def __init__(self, public_node):
+        self.public_node = public_node
+
+
+    def peerupdate(self):
+        with open(file_paths.peerlist, "r") as peer_conf:
+            data = json.load(peer_conf)               
+        peerlist = data["Peers"]       
+        peer_conf.close() 
+        return peerlist
+    
+    def newpeersend(self, peerlist): #Add your node, to the peers
+        rgbPrint(f"\n{'-'*28}\nRequesting node handshake", "green")
+        amt_of_added_peers = 0
+        for i in peerlist:
+            if i != self.public_node["url"]:
+                try:
+                    requests.get(f"{i}/net/NewPeer/{self.public_node['host']}/{self.public_node['port']}/{VER}/{self.public_node['proto']}")
+                    amt_of_added_peers +=1
+                except:
+                    pass
+        rgbPrint(f"Your node was added to {amt_of_added_peers} peers!\n{'-'*28}\n", "yellow")
+
+    def peersearch(self):
+        valid_peers = 0
+        peerlist = self.peerupdate()
+        for peer in peerlist:
+            try:
+                obtainedPeers = requests.get(f"{peer}/net/getOnlinePeers")
+                if obtainedPeers.status_code == 200:
+                    obtainedPeers = obtainedPeers.json()
+                    obpeers = obtainedPeers["result"]
+                    obpeersn = str(obpeers)[1:-1]
+                    obpeersjson = str(obpeersn)[1:-1]
+                    rgbPrint("Pinging new node: " + obpeersjson, "yellow")
+
+                    if not(obpeersjson in peerlist) and obpeersjson != self.public_node["url"]: #If node is not in the peerlist, and is not trying to add itself
+                        data = json.load(open(file_paths.peerlist))
+                        data["Peers"].append(obpeersjson)
+                        json.dump(data, open(file_paths.peerlist, "w"))
+                    valid_peers +=1
+            except requests.exceptions.RequestException:
+                pass
+              
+            if valid_peers == 0:
+                rgbPrint(f"\nNodes in {file_paths.peerlist} seem to be offline", "red")
+
+
+
+        self.peerupdate()
+        self.newpeersend(peerlist)
+        time.sleep(20)
+
 class Node(object):
-    def __init__(self, config):
+    def __init__(self):
         self.transactions = {}
         self.txsOrder = []
         self.mempool = []
         self.sigmanager = SignatureManager()
-        self.state = State(config["InitTxID"])
-        self.config = config
+        self.state = State()
         self.bestBlockChecked = 0
         self.goodPeers = []
+        self.peerlist = []
         self.checkGuys()
-        self.initNode()
+        self.initNode()                
 
 
     def canBePlayed(self, tx):
         sigVerified = False
         playableByState = False
-        if json.loads(tx.get("data")).get("type") != 2:
+
+        if dict(json.loads(tx.get("data"))).get("type") != 2:
             sigVerified = self.sigmanager.verifyTransaction(tx)
+
         else:
             sigVerified = True
+
         playableByState = self.state.willTransactionSucceed(tx)
+
         return (sigVerified and playableByState, sigVerified, playableByState)
 
 
     def addTxToMempool(self, tx):
-        if (self.canBePlayed(tx)[1]):
+        if self.canBePlayed(tx)[1]:
             self.mempool.append(tx)
 
-    def peersearch():
-        global peerlist
-        peerupdate()
-        try:
-            for i in peerlist:
-                print("Current nodes: "+i)
-                obtainedPeers = requests.get(f"{i}/net/getOnlinePeers").json()
-                obpeers = obtainedPeers["result"]
-                obpeersn = str(obpeers)[1:-1]
-                obpeersjson = str(obpeersn)[1:-1]
-                print("pinging new node: "+obpeersjson)
+    def send_registration_tx(self):
+        global REG_TXID, PUB_KEY
+        addr = self.keys["public"]
+        priv = self.keys["private"]
 
-            if not(obpeersjson in peerlist) and obpeersjson != protocol+"://"+parsednodehost+str(nodePort):
-                data = json.load(open(peerfile))
-                data["Peers"].append(obpeersjson)
-                json.dump(data,open(peerfile,"w"))
-                   
-        except:
-            print(f"Nodes in {peerfile} seem offline?")
-            pass
-        peerupdate()
-        newpeersend()
+        txs = self.state.transactions.get(addr) or ['none']
+        tx = {'data': json.dumps({"from": addr, "to": addr, "tokens": 0, "parent": txs[len(txs)-1], "epoch": self.state.beaconChain.getLastBlockJSON()["miningData"]["proof"], "type": 3, "node": {"timestamp": time.time(), "addr": self.public_node["url"]}})}
+
+        message = eth_account.messages.encode_defunct(text=tx["data"])
+        tx["hash"] = w3.soliditySha3(["string"], [tx["data"]]).hex()
+        _signature = w3.eth.account.sign_message(message, private_key=priv).signature.hex()
+        signer = w3.eth.account.recover_message(message, signature=_signature)
+        sender = w3.toChecksumAddress(json.loads(tx["data"])["from"])
+        if (signer == sender):
+            tx["sig"] = _signature
+
+        self.checkTxs([tx], False)
+        rgbPrint(f"Sent registration TX, TXID: {tx['hash']}", "green")
+        REG_TXID = tx['hash']
+        PUB_KEY = addr
+        return tx['hash']
+
+       
+
+
 
     def initNode(self):
+        self.public_node = read_yaml_config(print_host = False)[0]
+        self.peer_discovery = peer_discovery(self.public_node)
+        self.peerlist = self.peer_discovery.peerupdate()
+        self.keys = get_priv()
+        
+        
+
         try:
             self.loadDB()
-            rgbPrint("Successfully loaded node DB!", "green")
         except:
             rgbPrint("Error loading DB, starting from zero :/", "red")
-        self.upgradeTxs()
+        
+        were_txs_upgraded = self.upgradeTxs()
+        were_txs_played = False
+
+        play_txs_start = time.perf_counter()
         for txHash in self.txsOrder:
             tx = self.transactions[txHash]
             if self.canBePlayed(tx)[0]:
                 self.state.playTransaction(tx, False)
-        self.saveDB()
+                were_txs_played = True
+
+        rgbPrint(f"Time taken to play TXs: {round(time.perf_counter() - play_txs_start, 2)}s", "yellow")
+        rgbPrint(f"\nYour public key: {self.keys['public']}", "green")
+
+        if were_txs_played or were_txs_upgraded:
+            self.saveDB()
+
+        
         self.syncByBlock()
+        self.send_registration_tx() 
         self.saveDB()
 
-    def checkTxs(self, txs):
+    def checkTxs(self, txs, print = True):
         _counter = 0
         for tx in txs:
             playable = self.canBePlayed(tx)
-            if (not self.transactions.get(tx["hash"]) and playable[0]):
+            if not self.transactions.get(tx["hash"]) and playable[0]:
                 self.transactions[tx["hash"]] = tx
                 self.txsOrder.append(tx["hash"])
                 self.state.playTransaction(tx, True)
                 self.propagateTransactions([tx])
                 _counter += 1
-                rgbPrint(f"Successfully saved transaction: {tx['hash']} \n", "honeydew2")
+                if print:
+                    rgbPrint(f"Successfully saved transaction: {tx['hash']} \n", "honeydew2")
         if _counter > 0:
-            rgbPrint(f"Successfully saved {_counter} transactions!", "orchid")
+            if print:
+                rgbPrint(f"Successfully saved {_counter} transactions!", "orchid")
         self.saveDB()
 
     def saveDB(self):
         toSave = json.dumps({"transactions": self.transactions, "txsOrder": self.txsOrder})
-        file = open(self.config["dataBaseFile"], "w")
+        file = open(file_paths.database, "w")
         file.write(toSave)
         file.close()
 
     def loadDB(self):
-        file = open(self.config["dataBaseFile"], "r")
-        file.seek(0)
+        start = time.perf_counter()
+        file = open(file_paths.database, "r")
         db = json.load(file)
         self.transactions = db["transactions"]
         self.txsOrder = db["txsOrder"]
         file.close()
+        rgbPrint(f"Time taken to load DB: {round(time.perf_counter() - start, 2)}s", "yellow")
 
     def upgradeTxs(self):
+        start = time.perf_counter()
+        changed_anything = False
         for txid in self.txsOrder:
             if type(self.transactions[txid]["data"]) == dict:
                 self.transactions[txid]["data"] = json.dumps(self.transactions[txid]["data"]).replace(" ", "")
+                changed_anything = True
+        
+        rgbPrint(f"Time taken to upgrade TXs: {round(time.perf_counter() - start, 2)}s", "yellow")
+        return changed_anything
 
 
 
 
     # REQUESTING DATA FROM PEERS
     def askForMorePeers(self):
-        global peerlist
         for peer in self.goodPeers:
             try:
                 obtainedPeers = requests.get(f"{peer}/net/getOnlinePeers")
                 for _peer in obtainedPeers:
-                    if not (peer in peerlist):
-                        peerlist.append(peer)
+                    if not (peer in self.peerlist):
+                        self.peerlist.append(peer)
             except:
                 pass
 
     def checkGuys(self):
-        global peerlist
         self.goodPeers = []
-        for peer in peerlist:
+        for peer in self.peerlist:
             try:
-                if (requests.get(f"{peer}/ping").json()["success"]):
+                if requests.get(f"{peer}/ping").json()["success"]:
                     self.goodPeers.append(peer)
             except:
                 pass
 
         self.askForMorePeers()
         self.goodPeers = []
-        for peer in peerlist:
+        for peer in self.peerlist:
             try:
-                #print(f"checkGuys before if statement n2, node {peer}")
-                if (requests.get(f"{peer}/ping").json()["success"]):
+                if requests.get(f"{peer}/ping").json()["success"]:
                     self.goodPeers.append(peer)
             except:
                 pass
@@ -696,7 +827,7 @@ class Node(object):
                 for child in _childs:
                     if not (child in children):
                         pulledTxData = json.loads(self.pullSetOfTxs([child])[0]["data"])
-                        if (pulledTxData["parent"] == txid) or (pulledTxData["type"] == 2):
+                        if pulledTxData["parent"] == txid or pulledTxData["type"] == 2:
                             children.append(child)
                 break
             except:
@@ -729,7 +860,7 @@ class Node(object):
 
     def syncDB(self):
         self.checkGuys()
-        toCheck = self.pullChildsOfATx(self.config["InitTxID"])
+        toCheck = self.pullChildsOfATx("none")
         for txid in toCheck:
             _childs = self.execTxAndRetryWithChilds(txid)
 
@@ -737,19 +868,22 @@ class Node(object):
         self.checkGuys()
         length = 0
         for peer in self.goodPeers:
-            length = max(requests.get(f"{peer}/chain/length").json()["result"], length)
+            try:
+                length = max(requests.get(f"{peer}/chain/length").json()["result"], length)
+            except:
+                pass
         return length
 
     def syncByBlock(self):
         self.checkTxs(self.pullSetOfTxs(self.pullTxsByBlockNumber(0)))
-        for blockNumber in range(self.bestBlockChecked,self.getChainLength()):
+        for blockNumber in range(self.bestBlockChecked, self.getChainLength()):
             _toCheck_ = self.pullSetOfTxs(self.pullTxsByBlockNumber(blockNumber))
             rgbPrint(f"Synced block: {blockNumber} (Syncing with blockchain!)", "purple4")
             self.checkTxs(_toCheck_)
             self.bestBlockChecked = blockNumber
 
 
-    def propagateTransactions(self,txs):
+    def propagateTransactions(self, txs):
         toPush = []
         for tx in txs:
             txString = json.dumps(tx).replace(" ", "")
@@ -757,13 +891,17 @@ class Node(object):
             toPush.append(txHex)
         toPush = ",".join(toPush)
         for node in self.goodPeers:
-            requests.get(f"{node}/send/rawtransaction/?tx={toPush}")
+            try:
+                requests.get(f"{node}/send/rawtransaction/?tx={toPush}")
+            except:
+                pass
 
     def networkBackgroundRoutine(self):
         while True:
             self.checkGuys()
             self.syncByBlock()
-            time.sleep(60)
+            time.sleep(15)
+            
 
 
     def txReceipt(self, txid):
@@ -802,16 +940,18 @@ class TxBuilder(object):
         return (tx, playable)
 
 if __name__ == "__main__":
-    node = Node(config)
-    rgbPrint(node.config, "royal_blue1")
+    node = Node()
     maker = TxBuilder(node)
     thread = threading.Thread(target=node.networkBackgroundRoutine)
     thread.start()
 
 
-def jsonify(result, success = True):
+def jsonify(result = None, success = True, message = None):
+    if not result == None:
+        return {"result": result, "success": success}
+    elif not message == None:
+        return {"message": message, "success": success}
 
-    return {"result": result, "success": success}
 
 
 # HTTP INBOUND PARAMS
@@ -830,7 +970,7 @@ app.add_middleware(
 ######################### Web ###########################
 @app.get("/")
 def basicInfoHttp():
-    return  f"{CoinName} cryptocurrency MainNet running on port http: 5005 / https: 5006, local http: {nodePort} (Have fun using the network!)"
+    return  f"{MOTD or 'No MOTD defined :('}"
 
 @app.get("/ping")
 def getping():
@@ -838,7 +978,7 @@ def getping():
 
 @app.get("/stats")
 def getStats():
-    _stats_ = {"coin": {"transactions": len(node.txsOrder), "supply": node.state.totalSupply, "holders": len(node.state.holders)}, "chain" : {"length": len(node.state.beaconChain.blocks), "difficulty" : node.state.beaconChain.difficulty, "cumulatedDifficulty": node.state.beaconChain.cummulatedDifficulty, "IdealBlockTime": IdealBlockTime, "LastBlockTime": node.state.beaconChain.getLastBeacon().timestamp - node.state.beaconChain.getBlockByHeightJSON(int(len(node.state.beaconChain.blocks)-2))["timestamp"], "blockReward": BlockReward,  "target": node.state.beaconChain.miningTarget, "lastBlockHash": node.state.beaconChain.getLastBeacon().proof}}
+    _stats_ = {"coin": {"transactions": len(node.txsOrder), "supply": node.state.totalSupply, "holders": len(node.state.holders)}, "chain": {"length": len(node.state.beaconChain.blocks), "difficulty": node.state.beaconChain.difficulty, "cumulatedDifficulty": node.state.beaconChain.cummulatedDifficulty, "IdealBlockTime": IdealBlockTime, "LastBlockTime": node.state.beaconChain.getLastBeacon().timestamp - node.state.beaconChain.getBlockByHeightJSON(int(len(node.state.beaconChain.blocks)-2))["timestamp"], "blockReward": BlockReward,  "target": node.state.beaconChain.miningTarget, "lastBlockHash": node.state.beaconChain.getLastBeacon().proof}, "node": {"owner": PUB_KEY, "last_registration_tx": REG_TXID}}
     return jsonify(result=_stats_, success=True)
 
 # HTTP GENERAL GETTERS - pulled from `Node` class
@@ -868,7 +1008,7 @@ def getTxsByBound(upperBound, lowerBound):
     upperBound = min(upperBound, len(node.txsOrder)-1)
     lowerBound = max(lowerBound, 0)
     txs = []
-    for txid in node.txsOrder[lowerBound,upperBound]:
+    for txid in node.txsOrder[lowerBound, upperBound]:
         txs.append(node.transactions.get(txid))
     return jsonify(result=txs, success=True)
 
@@ -883,10 +1023,27 @@ def getTxIndex(tx):
 @app.get("/get/transaction/{txhash}") # get specific tx by hash
 def getTransactionByHash(txhash: str):
     tx = node.transactions.get(txhash)
-    if (tx != None):
+    if tx != None:
         return jsonify(result=tx, success=True)
     else:
         return (jsonify(message="TX_NOT_FOUND", success=False), 404)
+    
+@app.get("/get/transactionByBlockHash/{block_hash}")
+def get_tx_from_blockhash(block_hash: str):
+    block = node.state.beaconChain.blocksByHash.get(block_hash)
+    if block:
+        block = block.exportJson()
+        transactions = node.state.transactions.get(block["miningData"]["miner"])
+        transactions.reverse()
+        for transaction in transactions:
+            if transaction != "none":
+                transaction = node.transactions.get(transaction)
+                transaction_data = json.loads(transaction["data"])
+                if transaction_data["type"] == 1:
+                    if transaction_data["blockData"]["miningData"]["proof"] == block_hash:
+                        return jsonify(result=transaction, success=True)
+
+        
 
 @app.get("/get/transactions/{txhashes}") # get specific tx by hash
 def getMultipleTransactionsByHashes(txhashes: str):
@@ -895,7 +1052,7 @@ def getMultipleTransactionsByHashes(txhashes: str):
     _txhashes = txhashes.split(",")
     for txhash in _txhashes:
         tx = node.transactions.get(txhash)
-        if (tx):
+        if tx:
             txs.append(tx)
             oneSucceeded = True
     return jsonify(result=txs, success=oneSucceeded)
@@ -911,10 +1068,11 @@ def numberOfTxs():
 def accountInfo(account: str):
     _address = w3.toChecksumAddress(account)
     balance = node.state.balances.get(_address)
-    transactions = node.state.transactions.get(_address) or [node.config["InitTxID"]]
+    transactions = node.state.transactions.get(_address) or ['none']
     bio = node.state.accountBios.get(_address)
     nonce = len(node.state.sent.get(_address) or ["init"])
     return jsonify({"balance": (balance or 0), "bio": bio or "", "nonce": nonce, "transactions": transactions}, success=True)
+    
 
 @app.get("/accounts/sent/{account}")
 def sentByAccount(account: str):
@@ -944,10 +1102,53 @@ def sendRawTransactions(tx: str = None):
     hashes = []
     for rawtx in rawtxs:
         tx = json.loads(bytes.fromhex(rawtx).decode())
-        if (type(tx["data"]) == dict):
+
+        if type(tx["data"]) == dict:
             tx["data"] = json.dumps(tx["data"]).replace(" ", "")
-        txs.append(tx)
-        hashes.append(tx["hash"])
+
+
+        dict_data = json.loads(tx["data"])
+
+        if dict_data["type"] == 1:   
+            peer_above_height_is_valid = False                                                                                                                          #As it's type 1, it may cause syncing interuptions, check if other nodes are above height
+            node_last_block = node.state.beaconChain.getBlockByHeightJSON(len(node.state.beaconChain.blocks) - 2)
+            for peer in peer_discovery("").peerupdate(): #Public node not defined, as it won't be used
+                try:
+                    peer_stats = requests.get(peer + "/stats")
+                    if peer_stats.status_code == 200:
+                        peer_stats = peer_stats.json()["result"]
+                        peer_last_block = requests.get(peer + "chain/block/" + str(len(node.state.beaconChain.blocks) - 2))
+                        if peer_last_block.status_code == 200:
+                            peer_last_block = peer_last_block.json()["result"]
+                            peer_node_height_delta = peer_stats["chain"]["length"] - len(node.state.beaconChain.blocks)
+                            if peer_last_block == node_last_block and peer_node_height_delta > 0:
+                                _tx = requests.get(peer + "/get/transactionByBlockHash/" + peer_stats["chain"]["lastBlockHash"])
+                                if _tx.status_code == 200:
+                                    _tx = json.loads(_tx.json()["result"]["data"])
+                                    targets_match = True
+                                    if peer_node_height_delta == 1:
+                                        targets_match = _tx["blockData"]["miningData"]["miningTarget"] == dict_data["blockData"]["miningData"]["miningTarget"]
+                    
+                                    peer_above_height_is_valid = State().estimateMiningSuccess(Transaction(_tx), diff=peer_stats["chain"]["difficulty"]) and targets_match
+
+                                    if peer_above_height_is_valid:
+                                        break
+                except Exception as ex:
+                    if requests.exceptions.RequestException:
+                        pass
+                    else:
+                        raise ex
+            
+            if not peer_above_height_is_valid:
+                txs.append(tx)
+                hashes.append(tx["hash"])
+                
+            
+
+        else:               #Don't worry about checking if any nodes are ahead, just save it
+            txs.append(tx)
+            hashes.append(tx["hash"])
+
     node.checkTxs(txs)
     return jsonify(result=hashes, success=True)
 
@@ -955,14 +1156,14 @@ def sendRawTransactions(tx: str = None):
 @app.get("/chain/block/{block}")
 def getBlock(block: int):
     _block = node.state.beaconChain.getBlockByHeightJSON(block)
-    return jsonify(result=_block, success=not not _block)
+    return jsonify(result=_block, success=bool(_block))
 
 @app.get("/chain/blockByHash/{blockhash}")
 def blockByHash(blockhash: str):
     _block = node.state.beaconChain.blocksByHash.get(blockhash)
     if _block:
         _block = _block.exportJson()
-    return jsonify(result=_block, success=not not _block)
+    return jsonify(result=_block, success=bool(_block))
 
 @app.get("/chain/getlastblock")
 def getlastblock():
@@ -970,7 +1171,7 @@ def getlastblock():
 
 @app.get("/chain/miningInfo")
 def getMiningInfo():
-    _result = {"difficulty" : node.state.beaconChain.difficulty, "target": node.state.beaconChain.miningTarget, "lastBlockHash": node.state.beaconChain.getLastBeacon().proof}
+    _result = {"difficulty": node.state.beaconChain.difficulty, "target": node.state.beaconChain.miningTarget, "lastBlockHash": node.state.beaconChain.getLastBeacon().proof}
     return jsonify(result=_result, success=True)
 
 @app.get("/chain/length")
@@ -980,7 +1181,7 @@ def getChainLength():
 # SHARE PEERS (from `Node` class) / ADD incoming PEERS
 @app.get("/NodeVer")
 def nodever():
-    return jsonify(result=VER,success=True)
+    return jsonify(result=VER, success=True)
 
 @app.get("/net/getPeers")
 def shareMyPeers():
@@ -996,19 +1197,17 @@ def create_upload_file():
    return dat
 
 @app.get("/net/NewPeer/{newnodeurl}/{nodeport}/{NodeVer}/{proto}")
-def newnodes(newnodeurl : str, nodeport : int, NodeVer : str, proto : str):
+def newnodes(newnodeurl: str, nodeport: str, NodeVer: str, proto: str):
+    peerlist = peer_discovery("").peerupdate() #public node not defined because it is not used
     try:
-        if proto == "http":
-            newnodeurl = "http://"+newnodeurl+":"+str(nodeport)
+        if proto == "http" or proto == "https":
+            newnodeurl = "http://" + newnodeurl + ":" + nodeport
                 
-        if proto == "https":
-            newnodeurl = "https://"+newnodeurl+":"+str(nodeport)
-        
-        print(newnodeurl)
+        rgbPrint("Adding new node:" + newnodeurl, "yellow")
         try:
             nodeping = requests.get(f"{newnodeurl}/ping").json()
             NodeVer = requests.get(f"{newnodeurl}/NodeVer").json()
-            Newblockchain = requests.get(f"{newnodeurl}/net/verify")#used to download new peers blockchain and verify it
+            Newblockchain = requests.get(f"{newnodeurl}/net/verify") #used to download new peers blockchain and verify it
         
             with open("New-Nodedb","w") as newnodedb:
                 newnodedb.write(Newblockchain.content)
@@ -1018,54 +1217,57 @@ def newnodes(newnodeurl : str, nodeport : int, NodeVer : str, proto : str):
             verifynode = json.load(open("New-Nodedb","r"))
         
         except:
-            print("Could not Verify/ping new node")
+            rgbPrint("Could not Verify/ping new node", "red")
         
         if ournode == verifynode:
         
-            print("Pinging "+newnodeurl)
+            rgbPrint("Pinging: " + newnodeurl, "yellow")
             if nodeping["success"] == True:
                 if NodeVer["result"] == VER:
                     verack = "OK" 
              
                     if proto == "http" or proto == "https":
-                        data = json.load(open(peerfile))
+                        data = json.load(open(file_paths.peerlist))
                         data["Peers"].append(newnodeurl)
-                        json.dump(data, open(peerfile, "w"))
+                        json.dump(data, open(file_paths.peerlist, "w"))
                         peerlist.append(newnodeurl)
                     
-                    peerupdate()
+                    peerlist = Node.peer_discovery.peerupdate()
             
                     requests.get(f"{newnodeurl}/net/NewPeerok/{verack}")
         
                 else:
                     rgbPrint("**Node's Version is not compatible with yours!**","red")
                     verack = "NO"
-                    requests.get(f"{newnodeurl}/net/NewPeerok/{verack}")
+                    try:
+                        requests.get(f"{newnodeurl}/net/NewPeerok/{verack}")
+                    except:
+                        pass
             else:
-                print(f"A node requested you to add their ip to {peerfile} but it seems down?(sussy)")
+                rgbPrint(f"A node requested you to add their ip to {file_paths.peerlist} but it seems down? (sussy)", "red")
     except:
-        print("Error trying to request node to connect to self(sus?)")
+        pass
 
     if ournode != verifynode:
-        print(f"New node's Blockchain seems wrong?\n requesting {newnodeurl} to resync")
+        rgbPrint(f"New node's Blockchain seems wrong?\n requesting {newnodeurl} to resync", "red")
 
 
 @app.get("/net/NewPeer/{nodeverifystatus}")
-def checkverify(nodeverifystatus : str):
+def checkverify(nodeverifystatus: str):
     if nodeverifystatus == "OK":
         print("**Node is verified and Ready!**")
     else:
-        rgbPrint("**Nodes database.json seems wrong will restart and resync for you!**","red")
+        rgbPrint("**Your database.json seems wrong will restart and resync for you!**", "red")
         time.sleep(3)
         os.remove("database.json")
         os.execv(sys.argv[0], sys.argv)
     
 @app.get("/net/NewPeerok/{newverack}")
-def nodecompcheck(newverack : str ):
+def nodecompcheck(newverack: str ):
     if newverack == "OK":
-        print("new handshake established!")   
+        rgbPrint("New handshake established!", "yellow")   
     else:  
-        print("Node is incompatible with yours")
+        rgbPrint("Node is incompatible with yours", "yellow")
 
 
 class Web3Body(pydantic.BaseModel):
@@ -1115,14 +1317,23 @@ def handleWeb3Request(data: Web3Body):
 
 ######################### INIT ###########################
 if __name__ == '__main__':
-    def start():
-        uvicorn.run(app, host=nodeHost, port=nodePort)
+    if os.path.exists(file_paths.config):
+        cfg =  read_yaml_config()
+        public_node = cfg[0]
+
+        ssl_cfg = cfg[1]
+
+        def start():
+            uvicorn.run(app, host = "0.0.0.0", port = public_node["port"], ssl_keyfile = ssl_cfg["ssl_keyfile"], ssl_certfile = ssl_cfg["ssl_certfile"], ssl_ca_certs = ssl_cfg["ssl_ca_certs"])
         
-    t1 = threading.Thread(target=start)
-    t2 = threading.Thread(target=Node.peersearch)
+        t1 = threading.Thread(target=start)
+        t2 = threading.Thread(target=peer_discovery(public_node).peersearch)
     
-    t1.start()
-    t2.start()
-    t1.join()
-    t2.join()
+        t1.start()
+        t2.start()
+        t1.join()
+        t2.join()
+    
+    else:
+        rgbPrint(f"Config file: {file_paths.config} does not exist!")
         
