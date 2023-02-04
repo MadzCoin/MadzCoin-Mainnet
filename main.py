@@ -113,7 +113,7 @@ def read_yaml_config(print_host = True):
             except:
                 ssl_keyfile = None
                 ssl_certfile = None
-
+                ssl_ca_certs = None
             
             if print_host:
                 rgbPrint(f"Public host: {protocol}://{nodeHost}:{nodePort}", "green", end="\n"*2)
