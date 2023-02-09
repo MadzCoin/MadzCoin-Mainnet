@@ -114,9 +114,7 @@ def read_yaml_config(print_host = True):
                 ssl_keyfile = None
                 ssl_certfile = None
                 ssl_ca_certs = None
-            
-            if print_host:
-                rgbPrint(f"Public host: {protocol}://{nodeHost}:{nodePort}", "green", end="\n"*2)
+                          
 
             return ({"host": nodeHost, "port": int(configyaml["config"]["nodeport"]), "proto": protocol, "url": f"{protocol}://{nodeHost}:{nodePort}"}, {"ssl_keyfile": ssl_keyfile, "ssl_certfile": ssl_certfile, "ssl_ca_certs": ssl_ca_certs})
 
@@ -592,7 +590,6 @@ class peer_discovery(object):
         return peerlist
     
     def newpeersend(self, peerlist): #Add your node, to the peers
-        rgbPrint(f"\n{'-'*28}\nRequesting node handshake", "green")
         amt_of_added_peers = 0
         for i in peerlist:
             if i != self.public_node["url"]:
@@ -601,7 +598,6 @@ class peer_discovery(object):
                     amt_of_added_peers +=1
                 except:
                     pass
-        rgbPrint(f"Your node was added to {amt_of_added_peers} peers!\n{'-'*28}\n", "yellow")
 
     def peersearch(self):
         valid_peers = 0
@@ -609,6 +605,7 @@ class peer_discovery(object):
         for peer in peerlist:
             try:
                 obtainedPeers = requests.get(f"{peer}/net/getOnlinePeers")
+                
                 if obtainedPeers.status_code == 200:
                     obtainedPeers = obtainedPeers.json()
                     obpeers = obtainedPeers["result"]
@@ -625,7 +622,23 @@ class peer_discovery(object):
                 pass
               
             if valid_peers == 0:
-                rgbPrint(f"\nNodes in {file_paths.peerlist} seem to be offline", "red")
+                rgbPrint(f"\nNodes in {file_paths.peerlist} seem to be offline ", "red")
+        
+        for i in peerlist:
+            try:
+                peerping = requests.get(f"{i}/ping").json()["success"]
+                if peerping == True:
+                    pass
+                else:
+                    pass
+            except:
+                bad_peer = []
+                bad_peer.append(i)
+                for peers in bad_peer:
+                    peer_data = json.load(open(file_paths.peerlist))
+                    peer_data["Peers"].remove(peer)
+                    json.dump(peer_data, open(file_paths.peerlist, "w"))                    
+                    
         
         self.newpeersend(peerlist)
         self.peerupdate()
@@ -1211,8 +1224,7 @@ def newnodes(newnodeurl: str, nodeport: str, proto: str):
             newnodeurl = "http://" + newnodeurl + ":" + nodeport
         if proto == "https":
             newnodeurl = "https://" + newnodeurl + ":" + nodeport
-                
-        rgbPrint("Adding new node:" + newnodeurl, "yellow")
+        
         try:
             nodeping = requests.get(f"{newnodeurl}/ping").json()
             NodeVer = requests.get(f"{newnodeurl}/NodeVer").json()
@@ -1235,6 +1247,7 @@ def newnodes(newnodeurl: str, nodeport: str, proto: str):
                     
                     if newnodeurl not in data["Peers"]:
                         data["Peers"].append(newnodeurl)
+                        rgbPrint("Adding new node:" + newnodeurl, "yellow")
                     else:
                         return jsonify(result="Node already added!", success=False)
                     
@@ -1330,7 +1343,9 @@ if __name__ == '__main__':
         ssl_cfg = cfg[1]
 
         def start():
-            uvicorn.run(app, host = "0.0.0.0", port = public_node["port"], ssl_keyfile = ssl_cfg["ssl_keyfile"], ssl_certfile = ssl_cfg["ssl_certfile"], ssl_ca_certs = ssl_cfg["ssl_ca_certs"])
+            rgbPrint(f"Public host: {public_node['url']}", "green", end="\n")
+            rgbPrint(f"Pruning Nodes from {file_paths.peerlist}", "green", end="\n"*2)
+            uvicorn.run(app,host = "0.0.0.0", port = public_node["port"], ssl_keyfile = ssl_cfg["ssl_keyfile"], ssl_certfile = ssl_cfg["ssl_certfile"], ssl_ca_certs = ssl_cfg["ssl_ca_certs"])
         
         t1 = threading.Thread(target=start)
         #t2 = threading.Thread(target=peer_discovery(public_node).peersearch())
@@ -1343,5 +1358,4 @@ if __name__ == '__main__':
         
     else:
         rgbPrint(f"Config file: {file_paths.config} does not exist!")
-        
         
