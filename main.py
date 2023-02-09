@@ -1249,7 +1249,7 @@ def newnodes(newnodeurl: str, nodeport: str, proto: str):
                         data["Peers"].append(newnodeurl)
                         rgbPrint("Adding new node:" + newnodeurl, "yellow")
                     else:
-                        return jsonify(result="Node already added!", success=False)
+                        rgbPrint("Node already added!")
                     
                     json.dump(data, open(file_paths.peerlist, "w"))                            
                     peerlist.append(newnodeurl)
@@ -1264,7 +1264,7 @@ def newnodes(newnodeurl: str, nodeport: str, proto: str):
                 verack = "NO"
                 requests.get(f"{newnodeurl}/net/NewPeerok/{verack}")
 
-                return jsonify(result="Node version incompatible", success=False)
+                rgbPrint("Node version incompatible")
         else:
             rgbPrint(f"A node requested you to add their ip to {file_paths.peerlist} but it seems down? (sussy)", "red")
     except:
