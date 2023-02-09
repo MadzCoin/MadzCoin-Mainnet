@@ -16,7 +16,7 @@
 #       Provide useful functions to maintain node/network health
 #
 #   -Core:
-#       Contains code **VITAL** to node operation(You can go without this)
+#       Contains code **VITAL** to node operation(You can't go without this)
 #
 #   -Web:
 #       Provides interface to(and from) the outside world
@@ -30,7 +30,7 @@ from web3.auto import w3
 from rlp.sedes import Binary, big_endian_int, binary
 from fastapi.middleware.cors import CORSMiddleware
 from eth_account import Account
-import mock, getpass, requests, secrets, time, json, threading, uvicorn, fastapi, pydantic, yaml, os, sys, rich, rlp, eth_utils, dataclasses, typing, eth_account.messages, eth_account, groestlcoin_hash, skein
+import mock, getpass, requests, secrets, threading, time, json, uvicorn, fastapi, pydantic, yaml, os, sys, rich, rlp, eth_utils, dataclasses, typing, eth_account.messages, eth_account, groestlcoin_hash, skein
 
 
 file_paths = mock.Mock()
@@ -45,7 +45,7 @@ CoinName = "MadzCoin"
 IdealBlockTime = 300
 BlockReward = 10.5
 MOTD = None  
-VER = "0.11"
+VER = "0.12"
 
 
 def rgbPrint(string, color, end="\n"):
@@ -114,9 +114,7 @@ def read_yaml_config(print_host = True):
                 ssl_keyfile = None
                 ssl_certfile = None
                 ssl_ca_certs = None
-            
-            if print_host:
-                rgbPrint(f"Public host: {protocol}://{nodeHost}:{nodePort}", "green", end="\n"*2)
+                          
 
             return ({"host": nodeHost, "port": int(configyaml["config"]["nodeport"]), "proto": protocol, "url": f"{protocol}://{nodeHost}:{nodePort}"}, {"ssl_keyfile": ssl_keyfile, "ssl_certfile": ssl_certfile, "ssl_ca_certs": ssl_ca_certs})
 
@@ -592,16 +590,14 @@ class peer_discovery(object):
         return peerlist
     
     def newpeersend(self, peerlist): #Add your node, to the peers
-        rgbPrint(f"\n{'-'*28}\nRequesting node handshake", "green")
         amt_of_added_peers = 0
         for i in peerlist:
             if i != self.public_node["url"]:
                 try:
-                    requests.get(f"{i}/net/NewPeer/{self.public_node['host']}/{self.public_node['port']}/{VER}/{self.public_node['proto']}")
+                    requests.get(f"{i}/net/NewPeer/{self.public_node['host']}/{self.public_node['port']}/{self.public_node['proto']}")
                     amt_of_added_peers +=1
                 except:
                     pass
-        rgbPrint(f"Your node was added to {amt_of_added_peers} peers!\n{'-'*28}\n", "yellow")
 
     def peersearch(self):
         valid_peers = 0
@@ -609,6 +605,7 @@ class peer_discovery(object):
         for peer in peerlist:
             try:
                 obtainedPeers = requests.get(f"{peer}/net/getOnlinePeers")
+                
                 if obtainedPeers.status_code == 200:
                     obtainedPeers = obtainedPeers.json()
                     obpeers = obtainedPeers["result"]
@@ -625,12 +622,26 @@ class peer_discovery(object):
                 pass
               
             if valid_peers == 0:
-                rgbPrint(f"\nNodes in {file_paths.peerlist} seem to be offline", "red")
-
-
-
-        self.peerupdate()
+                rgbPrint(f"\nNodes in {file_paths.peerlist} seem to be offline ", "red")
+        
+        for i in peerlist:
+            try:
+                peerping = requests.get(f"{i}/ping").json()["success"]
+                if peerping == True:
+                    pass
+                else:
+                    pass
+            except:
+                bad_peer = []
+                bad_peer.append(i)
+                for peers in bad_peer:
+                    peer_data = json.load(open(file_paths.peerlist))
+                    peer_data["Peers"].remove(peer)
+                    json.dump(peer_data, open(file_paths.peerlist, "w"))                    
+                    
+        
         self.newpeersend(peerlist)
+        self.peerupdate()
         time.sleep(20)
 
 class Node(object):
@@ -642,6 +653,7 @@ class Node(object):
         self.state = State()
         self.bestBlockChecked = 0
         self.goodPeers = []
+        self.peer = peer_discovery.peerupdate(self)
         self.peerlist = []
         self.checkGuys()
         self.initNode()                
@@ -897,9 +909,12 @@ class Node(object):
                 pass
 
     def networkBackgroundRoutine(self):
+        cfg =  read_yaml_config()
+        public_node = cfg[0]
         while True:
             self.checkGuys()
             self.syncByBlock()
+            peer_discovery(public_node).peersearch()
             time.sleep(15)
             
 
@@ -969,7 +984,7 @@ app.add_middleware(
 
 ######################### Web ###########################
 @app.get("/")
-def basicInfoHttp():
+def basicInfoHttp():        
     return  f"{MOTD or 'No MOTD defined :('}"
 
 @app.get("/ping")
@@ -1185,7 +1200,7 @@ def nodever():
 
 @app.get("/net/getPeers")
 def shareMyPeers():
-    return jsonify(result=node.peers, success=True)
+    return jsonify(result=node.peer, success=True)
 
 @app.get("/net/getOnlinePeers")
 def shareOnlinePeers():
@@ -1193,66 +1208,70 @@ def shareOnlinePeers():
 
 @app.get("/net/verify")
 def create_upload_file():
-   dat = json.load(open("database.json"))
-   return dat
+    try:
+        with open("database.json","r") as f:
+            contents = f.readlines()
+    except Exception:
+        return jsonify(result="There was an error uploading the file", success=False)
 
-@app.get("/net/NewPeer/{newnodeurl}/{nodeport}/{NodeVer}/{proto}")
-def newnodes(newnodeurl: str, nodeport: str, NodeVer: str, proto: str):
+    return contents
+
+@app.get("/net/NewPeer/{newnodeurl}/{nodeport}/{proto}")
+def newnodes(newnodeurl: str, nodeport: str, proto: str):
     peerlist = peer_discovery("").peerupdate() #public node not defined because it is not used
     try:
-        if proto == "http" or proto == "https":
+        if proto == "http":
             newnodeurl = "http://" + newnodeurl + ":" + nodeport
-                
-        rgbPrint("Adding new node:" + newnodeurl, "yellow")
+        if proto == "https":
+            newnodeurl = "https://" + newnodeurl + ":" + nodeport
+        
         try:
             nodeping = requests.get(f"{newnodeurl}/ping").json()
             NodeVer = requests.get(f"{newnodeurl}/NodeVer").json()
-            Newblockchain = requests.get(f"{newnodeurl}/net/verify") #used to download new peers blockchain and verify it
-        
-            with open("New-Nodedb","w") as newnodedb:
-                newnodedb.write(Newblockchain.content)
-                newnodedb.close
-        
-            ournode = json.load(open("database.json","r"))
-            verifynode = json.load(open("New-Nodedb","r"))
-        
+            
+            Newblockchain = requests.get(f"{newnodeurl}/net/verify")
+            
+            with open("database.json", "r") as ourchain:
+                Ourblockchain = ourchain.readlines()
+                          
         except:
             rgbPrint("Could not Verify/ping new node", "red")
-        
-        if ournode == verifynode:
-        
-            rgbPrint("Pinging: " + newnodeurl, "yellow")
-            if nodeping["success"] == True:
-                if NodeVer["result"] == VER:
-                    verack = "OK" 
+
+        if nodeping["success"] == True:
+            if NodeVer["result"] == VER:
+                verack = "OK" 
+                verifystatus = "OK"
              
-                    if proto == "http" or proto == "https":
-                        data = json.load(open(file_paths.peerlist))
+                if proto == "http" or proto == "https":
+                    data = json.load(open(file_paths.peerlist))
+                    
+                    if newnodeurl not in data["Peers"]:
                         data["Peers"].append(newnodeurl)
-                        json.dump(data, open(file_paths.peerlist, "w"))
-                        peerlist.append(newnodeurl)
+                        rgbPrint("Adding new node:" + newnodeurl, "yellow")
+                    else:
+                        return jsonify(result="Node already added!", success=False)
+                    
+                    json.dump(data, open(file_paths.peerlist, "w"))                            
+                    peerlist.append(newnodeurl)
                     
                     peerlist = Node.peer_discovery.peerupdate()
             
                     requests.get(f"{newnodeurl}/net/NewPeerok/{verack}")
+                    requests.get(f"{newnodeurl}/net/NewPeerstatus/{verifystatus}")  
         
-                else:
-                    rgbPrint("**Node's Version is not compatible with yours!**","red")
-                    verack = "NO"
-                    try:
-                        requests.get(f"{newnodeurl}/net/NewPeerok/{verack}")
-                    except:
-                        pass
             else:
-                rgbPrint(f"A node requested you to add their ip to {file_paths.peerlist} but it seems down? (sussy)", "red")
+                rgbPrint("**Node's Version is not compatible with yours!**","red")
+                verack = "NO"
+                requests.get(f"{newnodeurl}/net/NewPeerok/{verack}")
+
+                return jsonify(result="Node version incompatible", success=False)
+        else:
+            rgbPrint(f"A node requested you to add their ip to {file_paths.peerlist} but it seems down? (sussy)", "red")
     except:
         pass
 
-    if ournode != verifynode:
-        rgbPrint(f"New node's Blockchain seems wrong?\n requesting {newnodeurl} to resync", "red")
 
-
-@app.get("/net/NewPeer/{nodeverifystatus}")
+@app.get("/net/NewPeerstatus/{nodeverifystatus}")
 def checkverify(nodeverifystatus: str):
     if nodeverifystatus == "OK":
         print("**Node is verified and Ready!**")
@@ -1260,14 +1279,14 @@ def checkverify(nodeverifystatus: str):
         rgbPrint("**Your database.json seems wrong will restart and resync for you!**", "red")
         time.sleep(3)
         os.remove("database.json")
-        os.execv(sys.argv[0], sys.argv)
+        exit()
     
 @app.get("/net/NewPeerok/{newverack}")
 def nodecompcheck(newverack: str ):
     if newverack == "OK":
         rgbPrint("New handshake established!", "yellow")   
     else:  
-        rgbPrint("Node is incompatible with yours", "yellow")
+        rgbPrint("Node is incompatible with yours", "red")
 
 
 class Web3Body(pydantic.BaseModel):
@@ -1324,16 +1343,19 @@ if __name__ == '__main__':
         ssl_cfg = cfg[1]
 
         def start():
-            uvicorn.run(app, host = "0.0.0.0", port = public_node["port"], ssl_keyfile = ssl_cfg["ssl_keyfile"], ssl_certfile = ssl_cfg["ssl_certfile"], ssl_ca_certs = ssl_cfg["ssl_ca_certs"])
+            rgbPrint(f"Public host: {public_node['url']}", "green", end="\n")
+            rgbPrint(f"Pruning Nodes from {file_paths.peerlist}", "green", end="\n"*2)
+            uvicorn.run(app,host = "0.0.0.0", port = public_node["port"], ssl_keyfile = ssl_cfg["ssl_keyfile"], ssl_certfile = ssl_cfg["ssl_certfile"], ssl_ca_certs = ssl_cfg["ssl_ca_certs"])
         
         t1 = threading.Thread(target=start)
-        t2 = threading.Thread(target=peer_discovery(public_node).peersearch)
+        #t2 = threading.Thread(target=peer_discovery(public_node).peersearch())
     
         t1.start()
-        t2.start()
+        #t2.start()
+        
         t1.join()
-        t2.join()
-    
+        #t2.join()
+        
     else:
         rgbPrint(f"Config file: {file_paths.config} does not exist!")
         
