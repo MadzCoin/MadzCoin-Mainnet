@@ -8,10 +8,10 @@
 #
 #   -Vars and Imports:
 #       Contains varibles and imported libs
-#   
+#
 #   -Config parsing:
 #       Parses configs from "config.yaml"
-#   
+#
 #   -Subcores:
 #       Provide useful functions to maintain node/network health
 #
@@ -25,13 +25,34 @@
 #       Funcs for starting node
 #
 
+import dataclasses
+import getpass
+import json
+import os
+import secrets
+import threading
+import time
+import typing
+
+import eth_account
+import eth_account.messages
+import eth_utils
+import fastapi
+import groestlcoin_hash
+import mock
+import pydantic
+import requests
+import rich
+import rlp
+import skein
+from plyer import notification
+import uvicorn
+import yaml
+from eth_account import Account
+from fastapi.middleware.cors import CORSMiddleware
+from rlp.sedes import Binary, big_endian_int, binary
 ######################### Vars and imports ###########################
 from web3.auto import w3
-from rlp.sedes import Binary, big_endian_int, binary
-from fastapi.middleware.cors import CORSMiddleware
-from eth_account import Account
-import mock, getpass, requests, secrets, threading, time, json, uvicorn, fastapi, pydantic, yaml, os, sys, rich, rlp, eth_utils, dataclasses, typing, eth_account.messages, eth_account, groestlcoin_hash, skein
-
 
 file_paths = mock.Mock()
 file_paths.config = "config.yaml"
@@ -43,8 +64,9 @@ file_paths.privkey = "acc.priv"
 Web3ChainID = 5151
 CoinName = "MadzCoin"
 IdealBlockTime = 300
-BlockReward = 10.5
-MOTD = None  
+BlockReward = 11.5
+
+MOTD = None
 VER = "0.12"
 
 
@@ -382,7 +404,7 @@ class BeaconChain(object):
             return self.blocks[height].exportJson()
         except:
             return None
-
+    
     def getLastBlockJSON(self):
         return self.getLastBeacon().exportJson()
 
@@ -505,7 +527,7 @@ class State(object):
 
         self.sent[tx.sender].append(tx.txid)
         self.received[tx.recipient].append(tx.txid)
-
+    
     def executeTransfer(self, tx, showMessage):
         willSucceed = self.estimateTransferSuccess(tx)
         if not willSucceed[0]:
@@ -1343,6 +1365,11 @@ if __name__ == '__main__':
         ssl_cfg = cfg[1]
 
         def start():
+            notification.notify(
+                title = "Madzcoin Node Online",
+                message = f"Node active at {public_node['url']}",
+                timeout = 10
+            )
             rgbPrint(f"Public host: {public_node['url']}", "green", end="\n")
             rgbPrint(f"Pruning Nodes from {file_paths.peerlist}", "green", end="\n"*2)
             uvicorn.run(app,host = "0.0.0.0", port = public_node["port"], ssl_keyfile = ssl_cfg["ssl_keyfile"], ssl_certfile = ssl_cfg["ssl_certfile"], ssl_ca_certs = ssl_cfg["ssl_ca_certs"])
