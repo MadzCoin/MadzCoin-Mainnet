@@ -1,4 +1,4 @@
-####################################################################
+###############################################################################
 
 # Thanks to Sirious coin for the source code 
 # checkout their project at https://github.com/Sirious-io
@@ -25,6 +25,8 @@
 #       Funcs for starting node
 #
 
+
+######################### Vars and imports ###########################
 import dataclasses
 import getpass
 import json
@@ -33,6 +35,7 @@ import secrets
 import threading
 import time
 import typing
+import urllib.request
 
 import eth_account
 import eth_account.messages
@@ -51,7 +54,6 @@ import yaml
 from eth_account import Account
 from fastapi.middleware.cors import CORSMiddleware
 from rlp.sedes import Binary, big_endian_int, binary
-######################### Vars and imports ###########################
 from web3.auto import w3
 
 file_paths = mock.Mock()
@@ -64,7 +66,7 @@ file_paths.privkey = "acc.priv"
 Web3ChainID = 5151
 CoinName = "MadzCoin"
 IdealBlockTime = 300
-BlockReward = 11.5
+BlockReward = 10.5
 
 MOTD = None
 VER = "0.12"
@@ -118,8 +120,11 @@ def read_yaml_config(print_host = True):
         with open(file_paths.config, "r") as configs:
             global MOTD
             configyaml = yaml.safe_load(configs)
+            try:
+                nodeHost = configyaml["config"]["nodehost"]
+            except:
+                nodeHost = urllib.request.urlopen('https://ident.me').read().decode('utf8')
                 
-            nodeHost = configyaml["config"]["nodehost"]
             nodePort = configyaml["config"]["nodeport"]
             protocol = configyaml["config"]["protocol"]
                 
@@ -627,19 +632,34 @@ class peer_discovery(object):
         for peer in peerlist:
             try:
                 obtainedPeers = requests.get(f"{peer}/net/getOnlinePeers")
+                peerver = requests.get(f"{peer}/NodeVer").json()["result"]
                 
-                if obtainedPeers.status_code == 200:
-                    obtainedPeers = obtainedPeers.json()
-                    obpeers = obtainedPeers["result"]
-                    obpeersn = str(obpeers)[1:-1]
-                    obpeersjson = str(obpeersn)[1:-1]
-                    rgbPrint("Pinging new node: " + obpeersjson, "yellow")
+                if peerver == VER:
+                
+                    if obtainedPeers.status_code == 200:
+                        obtainedPeers = obtainedPeers.json()
+                        obpeers = obtainedPeers["result"]
+                        obpeersn = str(obpeers)[1:-1]
+                        obpeersjson = str(obpeersn)[1:-1]
+                        
+                        if obpeersjson != "" and obpeersjson != public_node["url"] and obpeersjson not in peerlist:
+                            rgbPrint("Pinging new node: " + obpeersjson, "yellow")
+                        else:
+                            pass
 
-                    if not(obpeersjson in peerlist) and obpeersjson != self.public_node["url"]: #If node is not in the peerlist, and is not trying to add itself
-                        data = json.load(open(file_paths.peerlist))
-                        data["Peers"].append(obpeersjson)
-                        json.dump(data, open(file_paths.peerlist, "w"))
-                    valid_peers +=1
+                        if not(obpeersjson in peerlist) and obpeersjson != self.public_node["url"] and obpeersjson != "": #If node is not in the peerlist, and is not trying to add itself
+                            data = json.load(open(file_paths.peerlist))
+                            data["Peers"].append(obpeersjson)
+                            json.dump(data, open(file_paths.peerlist, "w"))
+                        valid_peers +=1
+                else:
+                    rgbPrint(f"{peer} is on a different version to your node!", "red")
+                    peerdata = json.load(open(file_paths.peerlist))
+                    peerdata["Peers"].remove(peer)
+                    json.dump(peerdata, open(file_paths.peerlist, "w"))
+                    self.peerupdate()
+                    
+                
             except requests.exceptions.RequestException:
                 pass
               
