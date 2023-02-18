@@ -1,63 +1,130 @@
-# MadzCoin
-MadzCoin is a work in progress coin that is decentralised and easy to mine
+<div align="center" id="top"> 
+  <img src="./.github/app.gif" alt="MadzCoin Mainnet" />
 
-## Indepth 
+  &#xa0;
 
-If you want the juicy specs of this coin continue reading:
+  <!-- <a href="https://madzcoinmainnet.netlify.app">Demo</a> -->
+</div>
 
-* ticker : MADZ
-* MT(multi-threaded) Miner avalible <a href="https://github.com/MadzCoin/MadzCoin-MTMiner">Here!</a>
+<h1 align="center">MadzCoin Mainnet</h1>
 
-* total supply : 21 billion MADZ
+<p align="center">
+  <img alt="Github top language" src="https://img.shields.io/github/languages/top/Madzcoin/madzcoin-mainnet?color=56BEB8">
+
+  <img alt="Github language count" src="https://img.shields.io/github/languages/count/Madzcoin/madzcoin-mainnet?color=56BEB8">
+
+  <img alt="Repository size" src="https://img.shields.io/github/repo-size/Madzcoin/madzcoin-mainnet?color=56BEB8">
+
+  <img alt="License" src="https://img.shields.io/github/license/Madzcoin/madzcoin-mainnet?color=56BEB8">
+
+  <a href="https://madzcoin.aj.do/">Website</a>
+
+  <!-- <img alt="Github issues" src="https://img.shields.io/github/issues/Madzcoin/madzcoin-mainnet?color=56BEB8" /> -->
+
+  <!-- <img alt="Github forks" src="https://img.shields.io/github/forks/Madzcoin/madzcoin-mainnet?color=56BEB8" /> -->
+
+  <!-- <img alt="Github stars" src="https://img.shields.io/github/stars/Madzcoin/madzcoin-mainnet?color=56BEB8" /> -->
+</p>
+
+<!-- Status -->
+
+<!-- <h4 align="center"> 
+	🚧  MadzCoin Mainnet 🚀 Under construction...  🚧
+</h4> 
+
+<hr> -->
+
+<p align="center">
+  <a href="#dart-about">About</a> &#xa0; | &#xa0; 
+  <a href="#sparkles-features">Features</a> &#xa0; | &#xa0;
+  <a href="#rocket-technologies">Technologies</a> &#xa0; | &#xa0;
+  <a href="#white_check_mark-requirements">Requirements</a> &#xa0; | &#xa0;
+  <a href="#checkered_flag-starting">Starting</a> &#xa0; | &#xa0;
+  <a href="#no_entry_sign-issues">Issues you may have</a> &#xa0; | &#xa0;
+  <a href="#memo-license">License</a> &#xa0; | &#xa0;
+  <a href="https://github.com/Madzcoin" target="_blank">Author</a>
+</p>
+
+<br>
+
+## :dart: About ##
+
+Three words define MadzCoin and our organization - privacy, security and transparency.<br/>
+MadzCoin is designed to be a human readable decentralized cryptocurrency that redefines the meaning of fast, feeless and Anonymous transactions.
+To make sure **everyone's** privacy belongs to themselves<br/>
+
+<p style="font-size: large;">
+Madzcoin specification's:
+
+* Ticker : MADZ
+
+* MT(multi-threaded) Miner available <a href="https://github.com/MadzCoin/MadzCoin-MTMiner">Here!</a>
+
+* Total supply : **21 billion MADZ**
 
 * Block reward : 10.5 MADZ
 
-* based on sha3-kecak
+* Average Block time : ~5 Minutes
 
-* Cool community
+* POW, based on pyskein and groestlcoin_hash
 
-also check out the explorer  <a href="http://madzcoin-explorer.aj.do/Explorer-testnet/">Here!</a>
+</p>
 
-## Getting Started
+## :sparkles: Features ##
 
-To get started mining first create a wallet with metamask(Native desktop wallet coming soon!) and<br/>
-add the network manuelly(if you dont know how to do that search on ~~google~~ duckduckgo "how to
-mannuely add networks to metamask" )<br/> once done download the miner from the link above and enter Madzcoin Address
+:heavy_check_mark: Not a lazy Bitcoin fork\
+:heavy_check_mark: Decentralised\
+:heavy_check_mark: Feeless transactions\
+:heavy_check_mark: Super easy to mine and get started with!\
 
-### Dependencies
-* python
+## :rocket: Technologies ##
 
-### Installing<br/>
+The following tools were used in this project:
 
-* first do 
-``git clone https://github.com/MadzCoin/MadzCoin-MTMiner.git``<br/>
+- [Python](https://python.org/)
+- [Web3.py](https://web3py.readthedocs.io/en/v5/)
 
-next do
-* ``cd MadzCoin-MTMINER``<br/>
+## :white_check_mark: Requirements ##
 
-then run
-* ``pip install -r requirements.txt``<br/>
+Before starting :checkered_flag:, you need to have [Git](https://git-scm.com) and [Python](https://python.org) installed.
 
-finally do
-* ``python MT_miner.py``
+## :checkered_flag: Starting ##
 
-## Help
-if it says fcntl not found do:
+```bash
+# Clone this project
+$ git clone https://github.com/MadzCoin/MadzCoin-Mainnet.git
+
+# cd into the cloned repo
+$ cd madzcoin-mainnet
+
+# Install dependencies
+$ pip install -r requirements.txt
+
+# Run the project
+$ run.bat
+
+# **or**
+
+$ cd node && py start.py
+
+# The server will initialize at <http://localhost:6969>
 ```
-pip uninstall skein && pip install pyskein
-```
-## Authors
-The amazing people who helped
-    [@superpythonguy](https://github.com/superpythonguy)<br/>
-    [@the-red-eye-studio](https://github.com/the-red-eye-studio)
 
-## Version History
-V0.1.0 First release
+## :no_entry_sign: Issues ##
+If you are using Windows and have an error trying to install web3. Please install [MS Visual Cpp Build Tools](https://visualstudio.microsoft.com/visual-cpp-build-tools/)
 
-## License
-This project is licensed under the MIT License - see the LICENSE.md file for details
 
-## Acknowledgments
-Inspiration, code snippets, etc.
-* [sirious project](https://github.com/Sirious-io/)
-* [explorer](https://github.com/Sirious-io/Explorer-testnet)
+## :memo: License ##
+
+This project is under license from MIT. For more details, see the [LICENSE](LICENSE.md) file.
+
+
+Made with :heart: by <a href="https://github.com/superpythonguy" target="_blank">SuperPythonGuy</a> and <a href="https://github.com/the-red-eye-studio">The Red Eye Studio</a>
+
+
+&#xa0;
+
+## Thanks to those who've hosted a Node! ##
+This project would've not reached this far with your support! :heart:
+
+<a href="#top">Back to top</a>
