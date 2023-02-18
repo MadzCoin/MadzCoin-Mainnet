@@ -1,51 +1,63 @@
 # MadzCoin
-Three words define MadzCoin and our organization -  **privacy, security and concurrency**.   
-MadzCoin is designed to be a human readable decentralized cryptocurrency that redefines the meaning of fast, feeless and Anonymous transactions.    
-To make sure everyone's privacy belongs to themselves and **not** big corporations.
+MadzCoin is a work in progress coin that is decentralised and easy to mine
 
+## Indepth 
 
-## Specifications 
+If you want the juicy specs of this coin continue reading:
 
-* Ticker : MADZ
+* ticker : MADZ
+* MT(multi-threaded) Miner avalible <a href="https://github.com/MadzCoin/MadzCoin-MTMiner">Here!</a>
 
-* Total supply : 21 billion MADZ
+* total supply : 21 billion MADZ
 
 * Block reward : 10.5 MADZ
 
-* Based on SHA3_256 (For bRoot), groestl_256 and skein_256 (PoW)
+* based on sha3-kecak
 
-* [Explorer](http://madzcoin-explorer.aj.do/Explorer-testnet/)
+* Cool community
+
+also check out the explorer  <a href="http://madzcoin-explorer.aj.do/Explorer-testnet/">Here!</a>
 
 ## Getting Started
 
-### Adding to MetaMask or other web3 wallets
-> Network name: MadzCoin-mainnet 
-> RPC-url: http://madzcoin-58263.portmap.io:58263/web3 **or** https://78.58.45.205:5000/web3    
-> Chain ID: 5151    
-> Ticker: MADZ   
+To get started mining first create a wallet with metamask(Native desktop wallet coming soon!) and<br/>
+add the network manuelly(if you dont know how to do that search on ~~google~~ duckduckgo "how to
+mannuely add networks to metamask" )<br/> once done download the miner from the link above and enter Madzcoin Address
 
+### Dependencies
+* python
 
+### Installing<br/>
 
-### Installing a miner
-> ```git clone https://github.com/MadzCoin/MadzCoin-MTMiner.git
-> cd "MadzCoin-MTMINER"
-> pip3 install -r requirements.txt
-> python3 MT_miner.py
-> ```
+* first do 
+``git clone https://github.com/MadzCoin/MadzCoin-MTMiner.git``<br/>
 
-## Debuging
-No module named 'fcntl': run
-``
+next do
+* ``cd MadzCoin-MTMINER``<br/>
+
+then run
+* ``pip install -r requirements.txt``<br/>
+
+finally do
+* ``python MT_miner.py``
+
+## Help
+if it says fcntl not found do:
+```
 pip uninstall skein && pip install pyskein
-``
+```
 ## Authors
-[@superpythonguy](https://github.com/superpythonguy)    
-[@the-red-eye-studio](https://github.com/the-red-eye-studio)
+The amazing people who helped
+    [@superpythonguy](https://github.com/superpythonguy)<br/>
+    [@the-red-eye-studio](https://github.com/the-red-eye-studio)
 
+## Version History
+V0.1.0 First release
 
 ## License
-This project is licensed under the MIT License - see LICENSE.md file for more details.
+This project is licensed under the MIT License - see the LICENSE.md file for details
 
 ## Acknowledgments
 Inspiration, code snippets, etc.
-* [Sirious](https://github.com/Sirious-io/) (MadzCoin is an independent fork of Sirious, the founder of it is a contributor of MADZ)   
+* [sirious project](https://github.com/Sirious-io/)
+* [explorer](https://github.com/Sirious-io/Explorer-testnet)

@@ -1,8 +1,0 @@
-config:
-    nodehost: "78.58.45.205"
-    nodeport: 5000
-    protocol: "https"
-    MOTD: "Madzcoin to the moon!"                                   #Optional, delete if you want it undefined
-    ssl_keyfile: "/home/redeye/Desktop/certs/main/private.key"      #Optional, delete if you don't use SSL
-    ssl_certfile: "/home/redeye/Desktop/certs/main/certificate.crt" #Optional, delete if you don't use SSL
-    ssl_ca_certs: '/home/redeye/Desktop/certs/main/ca_bundle.crt'   #Optional, delete if you don't use SSL
