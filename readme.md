@@ -124,7 +124,7 @@ Made with :heart: by <a href="https://github.com/superpythonguy" target="_blank"
 &#xa0;
 
 ## Thanks to those who've hosted a Node! ##
-This project would've not reached this far with your support! :heart:
+This project would've not reached this far with your support! :heart:<br/>
 <a href="https://madzcoin.aj.do/">Our Website</a>
 
 <a href="#top">Back to top</a>
