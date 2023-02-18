@@ -1,0 +1,5 @@
+config:
+    nodehost: "yo ip" # Enter the nodeip aka your ip or portmap public ip
+    nodeport: 6969 # node port
+    protocol: "http" # protocol http/https
+    MOTD: "Some motd"
