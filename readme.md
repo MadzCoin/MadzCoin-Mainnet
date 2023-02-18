@@ -1,12 +1,18 @@
-<div align="center" id="top"> 
-  <img src="./.github/app.gif" alt="MadzCoin Mainnet" />
-
   &#xa0;
 
   <!-- <a href="https://madzcoinmainnet.netlify.app">Demo</a> -->
 </div>
-
 <h1 align="center">MadzCoin Mainnet</h1>
+<style>
+  .center {
+    display: block;
+    margin-left: auto;
+    margin-right: auto;
+    width: 50%;
+  }
+</style>
+
+<img class="center" src="Madzcoin.ico" alt="Madzcoin img">
 
 <p align="center">
   <img alt="Github top language" src="https://img.shields.io/github/languages/top/Madzcoin/madzcoin-mainnet?color=56BEB8">
