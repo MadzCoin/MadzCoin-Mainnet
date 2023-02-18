@@ -17,7 +17,6 @@
 
   <img alt="License" src="https://img.shields.io/github/license/Madzcoin/madzcoin-mainnet?color=56BEB8">
 
-  <a href="https://madzcoin.aj.do/">Website</a>
 
   <!-- <img alt="Github issues" src="https://img.shields.io/github/issues/Madzcoin/madzcoin-mainnet?color=56BEB8" /> -->
 
@@ -126,5 +125,6 @@ Made with :heart: by <a href="https://github.com/superpythonguy" target="_blank"
 
 ## Thanks to those who've hosted a Node! ##
 This project would've not reached this far with your support! :heart:
+<a href="https://madzcoin.aj.do/">Our Website</a>
 
 <a href="#top">Back to top</a>
