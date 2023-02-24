@@ -6,7 +6,8 @@ We will always support the latest version of Madzcoin with security updates.
 
 | Version | Supported          |
 | ------- | ------------------ |
-| 0.1.2   |:white_check_mark:  |
+| 0.1.3   | :white_check_mark: |
+| 0.1.2   |:x:                 |
 | 0.1.1   |:x:                 |
 | 0.1.0   |:x:                 |
 

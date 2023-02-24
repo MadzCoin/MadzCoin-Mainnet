@@ -1,7 +1,9 @@
-###############################################################################
-
-# Thanks to Sirious coin for the source code 
-# checkout their project at https://github.com/Sirious-io
+"""
+    Madzcoin Core V 0.13
+    Copyright (c) 2023 The Madzcoin developers
+    Distributed under the MIT software license, see the accompanying
+    For copying see http://opensource.org/licenses/mit-license.php.
+"""
 
 #####################################################################
 #                       Sections and what they mean:
@@ -24,9 +26,8 @@
 #   -Init:
 #       Funcs for starting node
 #
-
-
 ######################### Vars and imports ###########################
+
 import dataclasses
 import json
 import threading
@@ -44,7 +45,6 @@ from rlp.sedes import Binary, big_endian_int, binary
 from src.funcs import get_priv, read_yaml_config, rgbPrint
 from src.vars import *
 from web3.auto import w3
-
 
 ######################### Core ###########################
 class SignatureManager(object):
@@ -117,12 +117,12 @@ class ETHTransactionDecoder(object):
         return self.DecodedTx(hash_tx, from_, to, tx.nonce, tx.gas, tx.gas_price, tx.value, data, chain_id, r, s, tx.v)
 
 
-
 class Message(object):
     def __init__(self, _from, _to, msg):
         self.sender = _from
         self.recipient = _to
         self.msg = msg
+
 
 class Transaction(object):
     def __init__(self, tx):
@@ -207,7 +207,6 @@ class Beacon(object):
         self.number = 0
         self.son = ""
 
-
     def beaconRoot(self):
         messagesHash = w3.soliditySha3(["bytes"], [self.messages])
         bRoot = w3.soliditySha3(["bytes32", "uint256", "bytes32","address"], [self.parent, int(self.timestamp), messagesHash, self.miner]) # parent PoW hash (bytes32), beacon's timestamp (uint256), hash of messages (bytes32), beacon miner (address)
@@ -224,6 +223,7 @@ class Beacon(object):
 
     def exportJson(self):
         return {"transactions": self.transactions, "messages": self.messages.hex(), "parent": self.parent, "son": self.son, "timestamp": self.timestamp, "height": self.number, "miningData": {"miner": self.miner, "nonce": self.nonce, "difficulty": self.difficulty, "miningTarget": self.miningTarget, "proof": self.proof}}
+
 
 class BeaconChain(object):
     def __init__(self):
@@ -257,7 +257,6 @@ class BeaconChain(object):
         if int(beacon.timestamp) < _lastBeacon.timestamp or beacon.timestamp > time.time():
             return (False, "INVALID_TIMESTAMP")
         return (True, "GOOD")
-
 
     def isBlockValid(self, blockData, diff = None):
         if diff == None:
@@ -296,7 +295,7 @@ class BeaconChain(object):
         if beaconValidity[0]:
             self.addBeaconToChain(_beacon)
             if showMessage:
-                rgbPrint(f"\n-----------\nBlock mined!\nHeight: {_beacon.number}\nMiner: {_beacon.miner}\nReward: {self.blockReward} {CoinName} \n-----------\n", "green")
+                rgbPrint(f"\n-----------\nNew Block mined!\nHeight: {_beacon.number}\nMiner: {_beacon.miner}\nReward: {self.blockReward} {CoinName} \n-----------\n", "green")
             return _beacon.miner
         return False
 
@@ -308,7 +307,7 @@ class BeaconChain(object):
             return self.blocks[height].exportJson()
         except:
             return None
-    
+
     def getLastBlockJSON(self):
         return self.getLastBeacon().exportJson()
 
@@ -351,8 +350,6 @@ class State(object):
             self.mined[user] = []
         if not self.accountBios.get(user):
             self.accountBios[user] = ""
-
-
 
     def checkParent(self, tx):
         lastTx = self.getLastUserTx(tx.sender)
@@ -404,7 +401,6 @@ class State(object):
 
         return (underlyingOperationSuccess[0] and correctBeacon and correctParent)
 
-
     def applyParentStuff(self, tx):
         self.txChilds[tx.txid] = []
         if tx.txtype == 2:
@@ -431,7 +427,7 @@ class State(object):
 
         self.sent[tx.sender].append(tx.txid)
         self.received[tx.recipient].append(tx.txid)
-    
+
     def executeTransfer(self, tx, showMessage):
         willSucceed = self.estimateTransferSuccess(tx)
         if not willSucceed[0]:
@@ -443,7 +439,7 @@ class State(object):
         self.balances[tx.recipient] += tx.value
 
         if showMessage:
-            rgbPrint(f"\n-----------\nTransfer executed!\nAmount transferred: {tx.value}\nFrom: {tx.sender}\nTo: {tx.recipient} \n-----------\n", "yellow")
+            rgbPrint(f"\n-----------\nNew Transfer executed!\nAmount transferred: {tx.value}\nFrom: {tx.sender}\nTo: {tx.recipient} \n-----------\n", "yellow")
         return (True, "Transfer succeeded")
 
     def mineBlock(self, tx, showMessage):
@@ -503,87 +499,30 @@ class Peer(object):
     def __init__(self, url):
         self.url = url
 
+
 class peer_discovery(object):
     def __init__(self, public_node):
         self.public_node = public_node
 
-
     def peerupdate(self):
-        with open(file_paths.peerlist, "r") as peer_conf:
-            data = json.load(peer_conf)               
-        peerlist = data["Peers"]       
-        peer_conf.close() 
-        return peerlist
-    
-    def newpeersend(self, peerlist): #Add your node, to the peers
-        amt_of_added_peers = 0
-        for i in peerlist:
-            if i != self.public_node["url"]:
-                try:
-                    requests.get(f"{i}/net/NewPeer/{self.public_node['host']}/{self.public_node['port']}/{self.public_node['proto']}")
-                    amt_of_added_peers +=1
-                except:
-                    pass
+        data = json.load(open(file_paths.peerlist, "r"))
+        for peer in data["Peers"]:
+            if peer == self.public_node["url"]:
+                data["Peers"].remove(peer)
+                json.dump(data, open(file_paths.peerlist, "w"))
+        return data["Peers"]
 
-    def peersearch(self):
-        valid_peers = 0
-        peerlist = self.peerupdate()
-        for peer in peerlist:
-            try:
-                obtainedPeers = requests.get(f"{peer}/net/getOnlinePeers")
-                peerver = requests.get(f"{peer}/NodeVer").json()["result"]
-                
-                if peerver == VER:
-                
-                    if obtainedPeers.status_code == 200:
-                        obtainedPeers = obtainedPeers.json()
-                        obpeers = obtainedPeers["result"]
-                        obpeersn = str(obpeers)[1:-1]
-                        obpeersjson = str(obpeersn)[1:-1]
-                        
-                        if obpeersjson != "" and obpeersjson != self.public_node["url"] and obpeersjson not in peerlist:
-                            rgbPrint("Pinging new node: " + obpeersjson, "yellow")
-                        else:
-                            pass
+    def updatepeerfile(self, peerremove):
+        data = json.load(open(file_paths.peerlist, "r"))
+        data["Peers"].remove(peerremove)
+        json.dump(data, open(file_paths.peerlist, "w"))
 
-                        if not(obpeersjson in peerlist) and obpeersjson != self.public_node["url"] and obpeersjson != "": #If node is not in the peerlist, and is not trying to add itself
-                            data = json.load(open(file_paths.peerlist))
-                            data["Peers"].append(obpeersjson)
-                            json.dump(data, open(file_paths.peerlist, "w"))
-                        valid_peers +=1
-                else:
-                    rgbPrint(f"{peer} is on a different version to your node!", "red")
-                    peerdata = json.load(open(file_paths.peerlist))
-                    peerdata["Peers"].remove(peer)
-                    json.dump(peerdata, open(file_paths.peerlist, "w"))
-                    self.peerupdate()
-                    
-                
-            except requests.exceptions.RequestException:
-                pass
-              
-            if valid_peers == 0:
-                rgbPrint(f"\nNodes in {file_paths.peerlist} seem to be offline ", "red")
-        
-        for i in peerlist:
-            try:
-                peerping = requests.get(f"{i}/ping").json()["success"]
-                if peerping == True:
-                    pass
-                else:
-                    pass
-            except:
-                bad_peer = []
-                bad_peer.append(i)
-                for peers in bad_peer:
-                    peer_data = json.load(open(file_paths.peerlist))
-                    peer_data["Peers"].remove(peer)
-                    json.dump(peer_data, open(file_paths.peerlist, "w"))                    
-                    
-        
-        self.newpeersend(peerlist)
-        self.peerupdate()
-        time.sleep(20)
+    def addtopeerlist(self, peer):
+        data = json.load(open(file_paths.peerlist, "r"))
+        if peer not in data["Peers"]:
+            data["Peers"].append(peer)
+        json.dump(data, open(file_paths.peerlist, "w"))
+
 
 class Node(object):
     def __init__(self):
@@ -594,11 +533,11 @@ class Node(object):
         self.state = State()
         self.bestBlockChecked = 0
         self.goodPeers = []
-        self.peer = peer_discovery.peerupdate(self)
-        self.peerlist = []
+        self.public_node = read_yaml_config(print_host = False)[0]
+        self.peer = peer_discovery(self.public_node).peerupdate()
+        self.peerlist = peer_discovery(self.public_node).peerupdate()
         self.checkGuys()
-        self.initNode()                
-
+        self.initNode()
 
     def canBePlayed(self, tx):
         sigVerified = False
@@ -613,7 +552,6 @@ class Node(object):
         playableByState = self.state.willTransactionSucceed(tx)
 
         return (sigVerified and playableByState, sigVerified, playableByState)
-
 
     def addTxToMempool(self, tx):
         if self.canBePlayed(tx)[1]:
@@ -641,20 +579,17 @@ class Node(object):
         PUB_KEY = addr
         return tx['hash']
 
-
     def initNode(self):
         self.public_node = read_yaml_config(print_host = False)[0]
         self.peer_discovery = peer_discovery(self.public_node)
         self.peerlist = self.peer_discovery.peerupdate()
         self.keys = get_priv()
-        
-        
 
         try:
             self.loadDB()
         except:
-            rgbPrint("Error loading DB, starting from zero :/", "red")
-        
+            rgbPrint("Error loading DB, nulling stats to zero :/", "red")
+
         were_txs_upgraded = self.upgradeTxs()
         were_txs_played = False
 
@@ -671,9 +606,9 @@ class Node(object):
         if were_txs_played or were_txs_upgraded:
             self.saveDB()
 
-        
+
         self.syncByBlock()
-        self.send_registration_tx() 
+        self.send_registration_tx()
         self.saveDB()
 
     def checkTxs(self, txs, print = True):
@@ -715,30 +650,84 @@ class Node(object):
             if type(self.transactions[txid]["data"]) == dict:
                 self.transactions[txid]["data"] = json.dumps(self.transactions[txid]["data"]).replace(" ", "")
                 changed_anything = True
-        
+
         rgbPrint(f"Time taken to upgrade TXs: {round(time.perf_counter() - start, 2)}s", "yellow")
         return changed_anything
 
-
-
-
-    # REQUESTING DATA FROM PEERS
-    def askForMorePeers(self):
+# REQUESTING DATA FROM PEERS
+    """
+    def checkPeers(self):
         for peer in self.goodPeers:
+            peerver = requests.get(f"{peer}/NodeVer").json()["result"]
+            if peerver == VER:
+                rgbPrint(f"{peer} is the same version as you (V{VER})", "green")
+    """
+    def newpeersend(self): #Add your node, to the peers
+        self.checkGuys()
+        for peer in self.goodPeers:
+            if peer != self.public_node["url"]:
+                try:
+                    requests.get(f"{peer}/net/NewPeer/{self.public_node['host']}/{self.public_node['port']}/{self.public_node['proto']}")
+                except:
+                    pass
+
+    def askForMorePeers(self):
+        public_node = read_yaml_config(print_host=False)[0]
+        for peer in self.peerlist:
             try:
                 obtainedPeers = requests.get(f"{peer}/net/getOnlinePeers")
-                for _peer in obtainedPeers:
-                    if not (peer in self.peerlist):
-                        self.peerlist.append(peer)
-            except:
+                peerver = requests.get(f"{peer}/NodeVer").json()["result"]
+
+                if peerver == VER:
+
+                    if obtainedPeers.status_code == 200:
+                        obtainedPeers = obtainedPeers.json()
+                        obpeers = obtainedPeers["result"]
+                        obpeersn = str(obpeers)[1:-1]
+                        obpeersjson = str(obpeersn)[1:-1]
+
+                        if obpeersjson != "" and obpeersjson != public_node["url"] and obpeersjson not in self.peerlist:
+                            rgbPrint("Pinging new node: " + obpeersjson, "yellow")
+                        else:
+                            pass
+
+                        if not(obpeersjson in self.peerlist) and obpeersjson != public_node["url"] and obpeersjson != "": #If node is not in the peerlist, and is not trying to add itself
+                            self.peerlist.append(obpeersjson)
+                            peer_discovery("").addtopeerlist(obpeersjson)
+                else:
+                    rgbPrint(f"{peer} is on a different version to your node!", "red")
+                    try:
+                        peer_discovery("").updatepeerfile(peer)
+                    except:
+                        pass
+
+            except requests.exceptions.RequestException:
                 pass
+
+    def peercheck(self):
+        for peer in self.goodPeers:
+            try:
+                requests.get(f"{peer}/ping")
+            except:
+                rgbPrint(f"{peer} seems offline! removing now!", "red")
+                peer_discovery("").updatepeerfile(peer)
+                self.peerlist.remove(peer)
+                self.goodPeers.remove(peer)
 
     def checkGuys(self):
         self.goodPeers = []
         for peer in self.peerlist:
             try:
                 if requests.get(f"{peer}/ping").json()["success"]:
-                    self.goodPeers.append(peer)
+                    peerver = requests.get(f"{peer}/NodeVer").json()["result"]
+                    if peerver == VER and peer != self.public_node["url"]:
+                        #rgbPrint(f"{peer} is the same version as you (V{VER})", "green")
+                        self.goodPeers.append(peer)
+                    else:
+                        rgbPrint(f"{peer} is on a different version to you! (Your version {VER}\n {peer} version {peerver})")
+                        self.peerlist.remove(peer)
+                        peer_discovery("").updatepeerfile(peer)
+                        pass
             except:
                 pass
 
@@ -746,10 +735,56 @@ class Node(object):
         self.goodPeers = []
         for peer in self.peerlist:
             try:
-                if requests.get(f"{peer}/ping").json()["success"]:
+                if requests.get(f"{peer}/ping").json()["success"] and peer not in self.goodPeers:
                     self.goodPeers.append(peer)
             except:
                 pass
+
+    def addwebpeer(self, url, port, proto):
+        public_node = read_yaml_config(print_host=False)[0]
+        try:
+            if proto == "http":
+                url = "http://" + url + ":" + port
+            if proto == "https":
+                url = "https://" + url + ":" + port
+            if url != public_node["url"]:
+                try:
+                    nodeping = requests.get(f"{url}/ping").json()
+                    NodeVer = requests.get(f"{url}/NodeVer").json()
+                except:
+                    #rgbPrint("Could not Verify/ping new node", "red")
+                    time.sleep(3)
+
+                if nodeping["success"] == True and url != public_node["url"]:
+                    if NodeVer["result"] == VER:
+                        verack = "OK"
+                        verifystatus = "OK"
+
+                        if proto == "http" or proto == "https":
+                            data = json.load(open(file_paths.peerlist))
+
+                            if url not in self.peerlist:
+                                data["Peers"].append(url)
+                                rgbPrint("Adding new node: " + url+ f" ({NodeVer['result']})", "yellow")
+                                self.peerlist.append(url)
+                                self.checkGuys()
+                            else:
+                                rgbPrint("Node already added!")
+
+                            json.dump(data, open(file_paths.peerlist, "w"))
+                            requests.get(f"{url}/net/NewPeerok/{verack}")
+                            requests.get(f"{url}/net/NewPeerstatus/{verifystatus}")
+
+                    else:
+                        rgbPrint("**Node's Version is not compatible with yours!**","red")
+                        verack = "NO"
+                        requests.get(f"{url}/net/NewPeerok/{verack}")
+
+                        rgbPrint("Node version incompatible")
+                else:
+                    rgbPrint(f"A node requested you to add their ip to {file_paths.peerlist} but it seems down? (sussy)", "red")
+        except:
+            pass
 
     def pullSetOfTxs(self, txids):
         txs = []
@@ -766,7 +801,6 @@ class Node(object):
             else:
                 txs.append(localTx)
         return txs
-
 
     def pullChildsOfATx(self, txid):
         vwjnvfeuuqubb = self.state.txChilds.get(txid) or []
@@ -847,15 +881,12 @@ class Node(object):
                 pass
 
     def networkBackgroundRoutine(self):
-        cfg =  read_yaml_config()
-        public_node = cfg[0]
         while True:
             self.checkGuys()
             self.syncByBlock()
-            peer_discovery(public_node).peersearch()
+            self.newpeersend()
+            self.peercheck()
             time.sleep(15)
-            
-
 
     def txReceipt(self, txid):
         _txid = txid
@@ -870,12 +901,12 @@ class Node(object):
             _beacon_ = self.state.beaconChain.blocksByHash.get(_blockHash)
             return {"transactionHash": _txid,"transactionIndex":  '0x1',"blockNumber": _beacon_.number, "blockHash": _blockHash, "cumulativeGasUsed": '0x5208', "gasUsed": '0x5208',"contractAddress": None,"logs": [], "logsBloom": "0x"+"0"*512,"status": '0x1'}
 
-
     def integrateETHTransaction(self, ethTx):
         data = json.dumps({"rawTx": ethTx, "epoch": self.state.getCurrentEpoch(), "type": 2})
         _txid_ = w3.soliditySha3(["string"], [data]).hex()
         self.checkTxs([{"data": data, "hash": _txid_}])
         return _txid_
+
 
 class TxBuilder(object):
     def __init__(self, node):
@@ -896,5 +927,3 @@ node = Node()
 maker = TxBuilder(node)
 thread = threading.Thread(target=node.networkBackgroundRoutine)
 thread.start()
-
-

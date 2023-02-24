@@ -1,3 +1,10 @@
+"""
+    Madzcoin Core V 0.12
+    Copyright (c) 2023 The Madzcoin developers
+    Distributed under the MIT software license, see the accompanying
+    For copying see http://opensource.org/licenses/mit-license.php.
+"""
+
 import os
 
 import fastapi
@@ -31,7 +38,7 @@ app.add_middleware(
 
 ######################### Web ###########################
 @app.get("/")
-def basicInfoHttp():        
+def basicInfoHttp():
     return  f"{MOTD or 'No MOTD defined :('}"
 
 @app.get("/ping")
@@ -89,7 +96,7 @@ def getTransactionByHash(txhash: str):
         return jsonify(result=tx, success=True)
     else:
         return (jsonify(message="TX_NOT_FOUND", success=False), 404)
-    
+
 @app.get("/get/transactionByBlockHash/{block_hash}")
 def get_tx_from_blockhash(block_hash: str):
     block = node.state.beaconChain.blocksByHash.get(block_hash)
@@ -105,7 +112,7 @@ def get_tx_from_blockhash(block_hash: str):
                     if transaction_data["blockData"]["miningData"]["proof"] == block_hash:
                         return jsonify(result=transaction, success=True)
 
-        
+
 
 @app.get("/get/transactions/{txhashes}") # get specific tx by hash
 def getMultipleTransactionsByHashes(txhashes: str):
@@ -134,7 +141,7 @@ def accountInfo(account: str):
     bio = node.state.accountBios.get(_address)
     nonce = len(node.state.sent.get(_address) or ["init"])
     return jsonify({"balance": (balance or 0), "bio": bio or "", "nonce": nonce, "transactions": transactions}, success=True)
-    
+
 
 @app.get("/accounts/sent/{account}")
 def sentByAccount(account: str):
@@ -171,7 +178,7 @@ def sendRawTransactions(tx: str = None):
 
         dict_data = json.loads(tx["data"])
 
-        if dict_data["type"] == 1:   
+        if dict_data["type"] == 1:
             peer_above_height_is_valid = False                                                                                                                          #As it's type 1, it may cause syncing interuptions, check if other nodes are above height
             node_last_block = node.state.beaconChain.getBlockByHeightJSON(len(node.state.beaconChain.blocks) - 2)
             for peer in peer_discovery("").peerupdate(): #Public node not defined, as it won't be used
@@ -190,7 +197,7 @@ def sendRawTransactions(tx: str = None):
                                     targets_match = True
                                     if peer_node_height_delta == 1:
                                         targets_match = _tx["blockData"]["miningData"]["miningTarget"] == dict_data["blockData"]["miningData"]["miningTarget"]
-                    
+
                                     peer_above_height_is_valid = State().estimateMiningSuccess(Transaction(_tx), diff=peer_stats["chain"]["difficulty"]) and targets_match
 
                                     if peer_above_height_is_valid:
@@ -200,12 +207,12 @@ def sendRawTransactions(tx: str = None):
                         pass
                     else:
                         raise ex
-            
+
             if not peer_above_height_is_valid:
                 txs.append(tx)
                 hashes.append(tx["hash"])
-                
-            
+
+
 
         else:               #Don't worry about checking if any nodes are ahead, just save it
             txs.append(tx)
@@ -265,57 +272,7 @@ def create_upload_file():
 
 @app.get("/net/NewPeer/{newnodeurl}/{nodeport}/{proto}")
 def newnodes(newnodeurl: str, nodeport: str, proto: str):
-    peerlist = peer_discovery("").peerupdate() #public node not defined because it is not used
-    try:
-        if proto == "http":
-            newnodeurl = "http://" + newnodeurl + ":" + nodeport
-        if proto == "https":
-            newnodeurl = "https://" + newnodeurl + ":" + nodeport
-        
-        try:
-            nodeping = requests.get(f"{newnodeurl}/ping").json()
-            NodeVer = requests.get(f"{newnodeurl}/NodeVer").json()
-            
-            Newblockchain = requests.get(f"{newnodeurl}/net/verify")
-            
-            with open("database.json", "r") as ourchain:
-                Ourblockchain = ourchain.readlines()
-                          
-        except:
-            rgbPrint("Could not Verify/ping new node", "red")
-
-        if nodeping["success"] == True:
-            if NodeVer["result"] == VER:
-                verack = "OK" 
-                verifystatus = "OK"
-             
-                if proto == "http" or proto == "https":
-                    data = json.load(open(file_paths.peerlist))
-                    
-                    if newnodeurl not in data["Peers"]:
-                        data["Peers"].append(newnodeurl)
-                        rgbPrint("Adding new node:" + newnodeurl, "yellow")
-                    else:
-                        rgbPrint("Node already added!")
-                    
-                    json.dump(data, open(file_paths.peerlist, "w"))                            
-                    peerlist.append(newnodeurl)
-                    
-                    peerlist = Node.peer_discovery.peerupdate()
-            
-                    requests.get(f"{newnodeurl}/net/NewPeerok/{verack}")
-                    requests.get(f"{newnodeurl}/net/NewPeerstatus/{verifystatus}")  
-        
-            else:
-                rgbPrint("**Node's Version is not compatible with yours!**","red")
-                verack = "NO"
-                requests.get(f"{newnodeurl}/net/NewPeerok/{verack}")
-
-                rgbPrint("Node version incompatible")
-        else:
-            rgbPrint(f"A node requested you to add their ip to {file_paths.peerlist} but it seems down? (sussy)", "red")
-    except:
-        pass
+    node.addwebpeer(newnodeurl, nodeport, proto)
 
 
 @app.get("/net/NewPeerstatus/{nodeverifystatus}")
@@ -327,12 +284,12 @@ def checkverify(nodeverifystatus: str):
         time.sleep(3)
         os.remove("database.json")
         exit()
-    
+
 @app.get("/net/NewPeerok/{newverack}")
 def nodecompcheck(newverack: str ):
     if newverack == "OK":
-        rgbPrint("New handshake established!", "yellow")   
-    else:  
+        rgbPrint("New handshake established!", "yellow")
+    else:
         rgbPrint("Node is incompatible with yours", "red")
 
 
@@ -397,15 +354,15 @@ def runNode():
             rgbPrint(f"Public host: {public_node['url']}", "green", end="\n")
             rgbPrint(f"Pruning Nodes from {file_paths.peerlist}", "green", end="\n"*2)
             uvicorn.run(app,host = "0.0.0.0", port = public_node["port"], ssl_keyfile = ssl_cfg["ssl_keyfile"], ssl_certfile = ssl_cfg["ssl_certfile"], ssl_ca_certs = ssl_cfg["ssl_ca_certs"])
-        
+
         t1 = threading.Thread(target=start)
         #t2 = threading.Thread(target=peer_discovery(public_node).peersearch())
-    
+
         t1.start()
         #t2.start()
-        
+
         t1.join()
         #t2.join()
-        
+
     else:
         rgbPrint(f"Config file: {file_paths.config} does not exist!")

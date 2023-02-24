@@ -11,6 +11,7 @@ from src.vars import *
 def rgbPrint(string, color, end="\n"):
     rich.print("[" + color + "]" + str(string) + "[/" + color + "]", end=end)
 
+
 def get_priv():
     if not os.path.exists(file_paths.privkey):
         rgbPrint("No private key detected, would you like to generate (1) or import one (2)?", "red")
@@ -49,8 +50,6 @@ def get_priv():
     return {"public": public_key, "private": priv}
                 
 
-
-
 def read_yaml_config(print_host = True):
     if os.path.exists(file_paths.config):
         with open(file_paths.config, "r") as configs:
@@ -67,7 +66,7 @@ def read_yaml_config(print_host = True):
             try:
                 MOTD = configyaml["config"]["MOTD"]
             except:
-                pass    
+                pass
 
             try:
                 ssl_keyfile = configyaml["config"]["ssl_keyfile"]
