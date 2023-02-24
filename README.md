@@ -113,16 +113,16 @@ If you are using Windows and have an error trying to install web3. Please instal
 
 ## :memo: License ##
 
-This project is under license from MIT. For more details, see the [LICENSE](LICENSE.md) file.
+This project is under the MIT license. For more details, see the [LICENSE](LICENSE.md) file.
 
 
-Made with :heart: by <a href="https://github.com/superpythonguy" target="_blank">SuperPythonGuy</a> and <a href="https://github.com/the-red-eye-studio">The Red Eye Studio</a>
+Made with :heart: by <a href="https://github.com/superpythonguy" target="_blank">SuperPythonGuy</a> and <a href="https://github.com/the-red-eye-studio">The Red Eye Studio</a>.
 
 
 &#xa0;
 
 ## Thanks to those who've hosted a Node! ##
-This project would've not reached this far with your support! :heart:<br/>
+This project would've not reached this far without your support! :heart:<br>
 <a href="https://madzcoin.aj.do/">Our Website</a>
 
 <a href="#top">Back to top</a>
