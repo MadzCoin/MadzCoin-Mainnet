@@ -506,10 +506,6 @@ class peer_discovery(object):
 
     def peerupdate(self):
         data = json.load(open(file_paths.peerlist, "r"))
-        for peer in data["Peers"]:
-            if peer == self.public_node["url"]:
-                data["Peers"].remove(peer)
-                json.dump(data, open(file_paths.peerlist, "w"))
         return data["Peers"]
 
     def updatepeerfile(self, peerremove):
@@ -665,7 +661,8 @@ class Node(object):
     def newpeersend(self): #Add your node, to the peers
         self.checkGuys()
         for peer in self.goodPeers:
-            if peer != self.public_node["url"]:
+            peersonline = requests.get(f"{peer}/net/getOnlinePeers").json()["result"]
+            if peer != self.public_node["url"] and self.public_node["url"] not in peersonline: # Send add peer request only if its not itself or its not added already!
                 try:
                     requests.get(f"{peer}/net/NewPeer/{self.public_node['host']}/{self.public_node['port']}/{self.public_node['proto']}")
                 except:
