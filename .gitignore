@@ -3,3 +3,4 @@
 /node/src/__pycache__
 /client
 /.vscode
+/node/data/peerlist.json
