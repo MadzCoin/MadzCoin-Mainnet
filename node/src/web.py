@@ -12,7 +12,6 @@ import pydantic
 import requests
 import uvicorn
 from fastapi.middleware.cors import CORSMiddleware
-from plyer import notification
 from src.core import *
 
 
@@ -346,11 +345,6 @@ def runNode():
         ssl_cfg = cfg[1]
 
         def start():
-            notification.notify(
-                title = "Madzcoin Node Online",
-                message = f"Node active at {public_node['url']}",
-                timeout = 10
-            )
             rgbPrint(f"Public host: {public_node['url']}", "green", end="\n")
             rgbPrint(f"Pruning Nodes from {file_paths.peerlist}", "green", end="\n"*2)
             uvicorn.run(app,host = "0.0.0.0", port = public_node["port"], ssl_keyfile = ssl_cfg["ssl_keyfile"], ssl_certfile = ssl_cfg["ssl_certfile"], ssl_ca_certs = ssl_cfg["ssl_ca_certs"])
