@@ -14,4 +14,3 @@ web3==5.29.2
 py_cpuinfo == 9.0.0
 psutil == 5.9.4
 pypresence == 4.2.1
-plyer == 2.1.0
