@@ -339,13 +339,14 @@ def runNode():
     if os.path.exists(file_paths.config):
         cfg =  read_yaml_config()
         public_node = cfg[0]
+        private_node = cfg[1]
 
-        ssl_cfg = cfg[1]
+        ssl_cfg = cfg[2]
 
         def start():
             rgbPrint(f"Public host: {public_node['url']}", "green", end="\n")
             rgbPrint(f"Pruning Nodes from {file_paths.peerlist}", "green", end="\n"*2)
-            uvicorn.run(app,host = "0.0.0.0", port = public_node["port"], ssl_keyfile = ssl_cfg["ssl_keyfile"], ssl_certfile = ssl_cfg["ssl_certfile"], ssl_ca_certs = ssl_cfg["ssl_ca_certs"])
+            uvicorn.run(app, host = private_node["host"], port = private_node["port"], ssl_keyfile = ssl_cfg["ssl_keyfile"], ssl_certfile = ssl_cfg["ssl_certfile"], ssl_ca_certs = ssl_cfg["ssl_ca_certs"])
 
         t1 = threading.Thread(target=start)
         #t2 = threading.Thread(target=peer_discovery(public_node).peersearch())

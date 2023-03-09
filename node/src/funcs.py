@@ -66,6 +66,24 @@ def read_yaml_config(print_host = True):
                 pass
 
             try:
+                privateHost = configyaml["config"]["private_host"]
+            except:
+                privateHost = "0.0.0.0"
+
+            try:
+                privatePort = configyaml["config"]["private_port"]
+            except:
+                port = ""
+
+                for char in nodeURL.split(":")[1]:
+                    if char.isdigit():
+                        port += char
+                    else:
+                        break
+
+                privatePort = int(port)
+
+            try:
                 ssl_keyfile = configyaml["config"]["ssl_keyfile"]
                 ssl_certfile = configyaml["config"]["ssl_certfile"]
                 ssl_ca_certs = configyaml["config"]["ssl_ca_certs"]
@@ -75,4 +93,4 @@ def read_yaml_config(print_host = True):
                 ssl_ca_certs = None
                           
 
-            return ({"url": nodeURL}, {"ssl_keyfile": ssl_keyfile, "ssl_certfile": ssl_certfile, "ssl_ca_certs": ssl_ca_certs})
+            return ({"url": nodeURL}, {"host": privateHost, "port": privatePort}, {"ssl_keyfile": ssl_keyfile, "ssl_certfile": ssl_certfile, "ssl_ca_certs": ssl_ca_certs})
