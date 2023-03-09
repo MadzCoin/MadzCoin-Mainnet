@@ -268,8 +268,9 @@ def create_upload_file():
     return contents
 
 @app.post("/net/NewPeer")
-def newnodes(node_url: str):
-    peer_discovery(read_yaml_config(print_host = False)[0]).check_add_peer(node_url)
+async def newnodes(request: fastapi.Request):
+    peer_url = (await request.body()).decode("utf-8") 
+    peer_discovery(read_yaml_config(print_host = False)[0]).check_add_peer(peer_url)
 
 
 @app.get("/net/NewPeerstatus/{nodeverifystatus}")

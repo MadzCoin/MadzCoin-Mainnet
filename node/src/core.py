@@ -527,12 +527,13 @@ class peer_discovery(object):
 
         if url != self.public_node["url"]:
             try:
-                nodeping = requests.get(f"{url}/ping").json()
+                self.nodeping = requests.get(f"{url}/ping").json()
                 NodeVer = requests.get(f"{url}/NodeVer").json()
             except:
                 pass
+
             
-            if nodeping["success"] == True and url != self.public_node["url"]:
+            if self.nodeping["success"] == True and url != self.public_node["url"]:
                 if NodeVer["result"] == VER:
                     if self.addtopeerlist(url): rgbPrint(f"Added new node: {url} ({NodeVer['result']})", "yellow")
 
@@ -744,7 +745,6 @@ class Node(object):
                     if peerver == VER and peer != self.public_node["url"]:
                         self.goodPeers.append(peer)
                     else:
-                        rgbPrint(f"{peer} is on a different version to you! (Your version {VER}\n {peer} version {peerver})")
                         self.peerlist.remove(peer)
                         peer_discovery("").updatepeerfile(peer)
                         pass

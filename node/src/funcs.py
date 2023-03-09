@@ -75,13 +75,13 @@ def read_yaml_config(print_host = True):
             except:
                 port = ""
 
-                for char in nodeURL.split(":")[1]:
+                for char in nodeURL.split(":")[2]:
                     if char.isdigit():
                         port += char
                     else:
                         break
 
-                privatePort = int(port)
+                privatePort = int(float(port))
 
             try:
                 ssl_keyfile = configyaml["config"]["ssl_keyfile"]
