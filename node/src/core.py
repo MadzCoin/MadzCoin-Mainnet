@@ -513,11 +513,39 @@ class peer_discovery(object):
         data["Peers"].remove(peerremove)
         json.dump(data, open(file_paths.peerlist, "w"))
 
-    def addtopeerlist(self, peer):
+    def addtopeerlist(self, peer: str):
         data = json.load(open(file_paths.peerlist, "r"))
-        if peer not in data["Peers"]:
+
+        if peer not in data["Peers"] and peer != self.public_node["url"]:
             data["Peers"].append(peer)
-        json.dump(data, open(file_paths.peerlist, "w"))
+            json.dump(data, open(file_paths.peerlist, "w"))
+            return True
+
+        return False
+
+    def check_add_peer(self, url):
+
+        if url != self.public_node["url"]:
+            try:
+                nodeping = requests.get(f"{url}/ping").json()
+                NodeVer = requests.get(f"{url}/NodeVer").json()
+            except:
+                pass
+            
+            if nodeping["success"] == True and url != self.public_node["url"]:
+                if NodeVer["result"] == VER:
+                    if self.addtopeerlist(url): rgbPrint(f"Added new node: {url} ({NodeVer['result']})", "yellow")
+
+                    verack, verifystatus = "OK", "OK"
+                    requests.get(f"{url}/net/NewPeerok/{verack}")
+                    requests.get(f"{url}/net/NewPeerstatus/{verifystatus}")
+
+                else:
+                    rgbPrint("**Node's Version is not compatible with yours!**", "red")
+                    verack = "NO"
+                    requests.get(f"{url}/net/NewPeerok/{verack}")
+            else:
+                rgbPrint(f"{url} requested you to add their IP to {file_paths.peerlist} but it seems down", "red")
 
 
 class Node(object):
@@ -530,8 +558,8 @@ class Node(object):
         self.bestBlockChecked = 0
         self.goodPeers = []
         self.public_node = read_yaml_config(print_host = False)[0]
-        self.peer = peer_discovery(self.public_node).peerupdate()
-        self.peerlist = peer_discovery(self.public_node).peerupdate()
+        self.peer_discovery = peer_discovery(self.public_node)
+        self.peerlist = self.peer_discovery.peerupdate()
         self.checkGuys()
         self.initNode()
 
@@ -576,9 +604,6 @@ class Node(object):
         return tx['hash']
 
     def initNode(self):
-        self.public_node = read_yaml_config(print_host = False)[0]
-        self.peer_discovery = peer_discovery(self.public_node)
-        self.peerlist = self.peer_discovery.peerupdate()
         self.keys = get_priv()
 
         try:
@@ -601,7 +626,6 @@ class Node(object):
 
         if were_txs_played or were_txs_upgraded:
             self.saveDB()
-
 
         self.syncByBlock()
         self.send_registration_tx()
@@ -664,7 +688,7 @@ class Node(object):
             peersonline = requests.get(f"{peer}/net/getOnlinePeers").json()["result"]
             if peer != self.public_node["url"] and self.public_node["url"] not in peersonline: # Send add peer request only if its not itself or its not added already!
                 try:
-                    requests.get(f"{peer}/net/NewPeer/{self.public_node['host']}/{self.public_node['port']}/{self.public_node['proto']}")
+                    requests.post(f"{peer}/net/NewPeer", data = self.public_node["url"])
                 except:
                     pass
 
@@ -718,7 +742,6 @@ class Node(object):
                 if requests.get(f"{peer}/ping").json()["success"]:
                     peerver = requests.get(f"{peer}/NodeVer").json()["result"]
                     if peerver == VER and peer != self.public_node["url"]:
-                        #rgbPrint(f"{peer} is the same version as you (V{VER})", "green")
                         self.goodPeers.append(peer)
                     else:
                         rgbPrint(f"{peer} is on a different version to you! (Your version {VER}\n {peer} version {peerver})")
@@ -737,51 +760,6 @@ class Node(object):
             except:
                 pass
 
-    def addwebpeer(self, url, port, proto):
-        public_node = read_yaml_config(print_host=False)[0]
-        try:
-            if proto == "http":
-                url = "http://" + url + ":" + port
-            if proto == "https":
-                url = "https://" + url + ":" + port
-            if url != public_node["url"]:
-                try:
-                    nodeping = requests.get(f"{url}/ping").json()
-                    NodeVer = requests.get(f"{url}/NodeVer").json()
-                except:
-                    #rgbPrint("Could not Verify/ping new node", "red")
-                    time.sleep(3)
-
-                if nodeping["success"] == True and url != public_node["url"]:
-                    if NodeVer["result"] == VER:
-                        verack = "OK"
-                        verifystatus = "OK"
-
-                        if proto == "http" or proto == "https":
-                            data = json.load(open(file_paths.peerlist))
-
-                            if url not in self.peerlist:
-                                data["Peers"].append(url)
-                                rgbPrint("Adding new node: " + url+ f" ({NodeVer['result']})", "yellow")
-                                self.peerlist.append(url)
-                                self.checkGuys()
-                            else:
-                                rgbPrint("Node already added!")
-
-                            json.dump(data, open(file_paths.peerlist, "w"))
-                            requests.get(f"{url}/net/NewPeerok/{verack}")
-                            requests.get(f"{url}/net/NewPeerstatus/{verifystatus}")
-
-                    else:
-                        rgbPrint("**Node's Version is not compatible with yours!**","red")
-                        verack = "NO"
-                        requests.get(f"{url}/net/NewPeerok/{verack}")
-
-                        rgbPrint("Node version incompatible")
-                else:
-                    rgbPrint(f"A node requested you to add their ip to {file_paths.peerlist} but it seems down? (sussy)", "red")
-        except:
-            pass
 
     def pullSetOfTxs(self, txids):
         txs = []
@@ -883,6 +861,7 @@ class Node(object):
             self.syncByBlock()
             self.newpeersend()
             self.peercheck()
+            self.peerlist = self.peer_discovery.peerupdate()
             time.sleep(15)
 
     def txReceipt(self, txid):

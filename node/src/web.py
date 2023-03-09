@@ -211,8 +211,6 @@ def sendRawTransactions(tx: str = None):
                 txs.append(tx)
                 hashes.append(tx["hash"])
 
-
-
         else:               #Don't worry about checking if any nodes are ahead, just save it
             txs.append(tx)
             hashes.append(tx["hash"])
@@ -269,9 +267,9 @@ def create_upload_file():
 
     return contents
 
-@app.get("/net/NewPeer/{newnodeurl}/{nodeport}/{proto}")
-def newnodes(newnodeurl: str, nodeport: str, proto: str):
-    node.addwebpeer(newnodeurl, nodeport, proto)
+@app.post("/net/NewPeer")
+def newnodes(node_url: str):
+    peer_discovery(read_yaml_config(print_host = False)[0]).check_add_peer(node_url)
 
 
 @app.get("/net/NewPeerstatus/{nodeverifystatus}")
