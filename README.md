@@ -1,10 +1,6 @@
-  &#xa0;
-
   <!-- <a href="https://madzcoinmainnet.netlify.app">Demo</a> -->
 </div>
 <h1 align="center">MadzCoin Mainnet</h1>
-
-<center><img src="Madzcoin.ico" alt="Madzcoin img"></center>
 
 <p align="center">
   <img alt="Github top language" src="https://img.shields.io/github/languages/top/Madzcoin/madzcoin-mainnet?color=56BEB8">
@@ -37,7 +33,7 @@
   <a href="#rocket-technologies">Technologies</a> &#xa0; | &#xa0;
   <a href="#white_check_mark-requirements">Requirements</a> &#xa0; | &#xa0;
   <a href="#checkered_flag-starting">Starting</a> &#xa0; | &#xa0;
-  <a href="#no_entry_sign-issues">Issues you may have</a> &#xa0; | &#xa0;
+  <a href="#no_entry_sign-common-issues">Common issues</a> &#xa0; | &#xa0;
   <a href="#memo-license">License</a> &#xa0; | &#xa0;
   <a href="https://github.com/Madzcoin" target="_blank">Author</a>
 </p>
@@ -46,31 +42,26 @@
 
 ## :dart: About ##
 
-Three words define MadzCoin and our organization - privacy, security and transparency.<br/>
-MadzCoin is designed to be a human readable decentralized cryptocurrency that redefines the meaning of fast, feeless and Anonymous transactions.
-To make sure **everyone's** privacy belongs to themselves<br/>
+Three words define MadzCoin and our organization - privacy, security and transparency.   
+MadzCoin is designed to be a human readable, decentralized cryptocurrency. As it makes   
+sure that **everyone's** privacy belongs to themselves.
 
-<p style="font-size: large;">
-Madzcoin specification's:
 
-* Ticker : MADZ
+* Ticker: MADZ
 
-* MT(multi-threaded) Miner available <a href="https://github.com/MadzCoin/MadzCoin-MTMiner">Here!</a>
+* Max supply: ♾ MADZ
 
-* Total supply : **21 billion MADZ**
+* Block reward: 10.5 MADZ
 
-* Block reward : 10.5 MADZ
+* Ideal Block time: 5 Minutes
 
-* Average Block time : ~5 Minutes
+* PoW, based on ``pyskein`` and ``groestlcoin_hash``
 
-* POW, based on pyskein and groestlcoin_hash
-
-</p>
 
 ## :sparkles: Features ##
 
 :heavy_check_mark: Not a lazy Bitcoin fork\
-:heavy_check_mark: Decentralised\
+:heavy_check_mark: Decentralized\
 :heavy_check_mark: Feeless transactions\
 :heavy_check_mark: Super easy to mine and get started with!\
 
@@ -80,6 +71,7 @@ The following tools were used in this project:
 
 - [Python](https://python.org/)
 - [Web3.py](https://web3py.readthedocs.io/en/v5/)
+- [FastAPI](https://fastapi.tiangolo.com/)
 
 ## :white_check_mark: Requirements ##
 
@@ -95,20 +87,18 @@ $ git clone https://github.com/MadzCoin/MadzCoin-Mainnet.git
 $ cd madzcoin-mainnet
 
 # Install dependencies
-$ pip install -r requirements.txt
+$ pip3 install -r requirements.txt
 
-# Run the project
-$ run.bat
+# IMPORTANT: Edit data in config.yaml
+$ nano node/data/config.yaml # notepad node/data/config.yaml on Windows
 
-# **or**
-
-$ cd node && py start.py
-
-# The server will initialize at <http://localhost:6969>
+$ cd node && python3 start.py #	start.bat on Windows
 ```
 
-## :no_entry_sign: Issues ##
-If you are using Windows and have an error trying to install web3. Please install [MS Visual Cpp Build Tools](https://visualstudio.microsoft.com/visual-cpp-build-tools/)
+## :no_entry_sign: Common issues ##
+> If you are using Windows and have an error trying to install web3. Please install [Microsoft C++ Build Tools](https://visualstudio.microsoft.com/visual-cpp-build-tools/)   
+
+> Please, if you are facing issues with dependencies and installed them manually, delete everything and use ``pip3 install -r requirements.txt``
 
 
 ## :memo: License ##
@@ -116,13 +106,7 @@ If you are using Windows and have an error trying to install web3. Please instal
 This project is under the MIT license. For more details, see the [LICENSE](LICENSE.md) file.
 
 
-Made with :heart: by <a href="https://github.com/superpythonguy" target="_blank">SuperPythonGuy</a> and <a href="https://github.com/the-red-eye-studio">The Red Eye Studio</a>.
-
-
-&#xa0;
+Made with :heart: by [SuperPythonGuy](https://github.com/superpythonguy) and [The Red Eye Studio](https://github.com/the-red-eye-studio).
 
 ## Thanks to those who've hosted a Node! ##
-This project would've not reached this far without your support! :heart:<br>
-<a href="https://madzcoin.aj.do/">Our Website</a>
-
-<a href="#top">Back to top</a>
+This project would've not reached this far without your support! :heart:
