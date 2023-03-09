@@ -60,10 +60,10 @@ sure that **everyone's** privacy belongs to themselves.
 
 ## :sparkles: Features ##
 
-:heavy_check_mark: Not a lazy Bitcoin fork\
-:heavy_check_mark: Decentralized\
-:heavy_check_mark: Feeless transactions\
-:heavy_check_mark: Super easy to mine and get started with!\
+:heavy_check_mark: Not a lazy Bitcoin fork   
+:heavy_check_mark: Decentralized   
+:heavy_check_mark: Feeless transactions   
+:heavy_check_mark: Super easy to mine and get started with!   
 
 ## :rocket: Technologies ##
 
