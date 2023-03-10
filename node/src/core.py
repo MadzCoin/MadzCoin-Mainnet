@@ -1,5 +1,5 @@
 """
-    Madzcoin Core V 0.13
+    Madzcoin Core V 0.14
     Copyright (c) 2023 The Madzcoin developers
     Distributed under the MIT software license, see the accompanying
     For copying see http://opensource.org/licenses/mit-license.php.
@@ -511,7 +511,7 @@ class peer_discovery(object):
     def addtopeerlist(self, peer: str):
         data = json.load(open(file_paths.peerlist, "r"))
 
-        if peer not in data["Peers"] and peer != self.public_node["url"]:
+        if peer not in data["Peers"] and peer not in [self.public_node["url"], ' ', '']:
             data["Peers"].append(peer)
             json.dump(data, open(file_paths.peerlist, "w"))
             return True
@@ -692,7 +692,8 @@ class Node(object):
     def peercheck(self):
         for peer in self.goodPeers:
             try:
-                requests.get(f"{peer}/ping")
+                if not requests.get(f"{peer}/ping").json()["success"] == True:
+                    raise ValueError
             except:
                 self.peer_discovery.remove_peer(peer)
                 self.peerlist.remove(peer)
@@ -704,7 +705,7 @@ class Node(object):
             try:
                 if requests.get(f"{peer}/ping").json()["success"]:
                     peerver = requests.get(f"{peer}/NodeVer").json()["result"]
-                    if peerver == VER and peer != self.public_node["url"]:
+                    if peerver == VER and peer not in [self.public_node["url"], "", " "]:
                         self.goodPeers.append(peer)
                     else:
                         self.peerlist.remove(peer)
@@ -796,7 +797,7 @@ class Node(object):
         self.checkTxs(self.pullSetOfTxs(self.pullTxsByBlockNumber(0)))
         for blockNumber in range(self.bestBlockChecked, self.getChainLength()):
             _toCheck_ = self.pullSetOfTxs(self.pullTxsByBlockNumber(blockNumber))
-            rgbPrint(f"Synced block: {blockNumber} (Syncing with blockchain!)", "purple4")
+            rgbPrint(f"Synced block: {blockNumber}!", "purple4")
             self.checkTxs(_toCheck_)
             self.bestBlockChecked = blockNumber
 

@@ -14,4 +14,4 @@ BlockReward = 10.5
 data = yaml.safe_load(open(file_paths.config))
 
 MOTD = data["config"]["MOTD"]
-VER = "0.13"
+VER = "0.14"

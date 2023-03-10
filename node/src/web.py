@@ -1,5 +1,5 @@
 """
-    Madzcoin Core V 0.12
+    Madzcoin Core V 0.14
     Copyright (c) 2023 The Madzcoin developers
     Distributed under the MIT software license, see the accompanying
     For copying see http://opensource.org/licenses/mit-license.php.
@@ -320,11 +320,7 @@ def handleWeb3Request(data: Web3Body):
 
 def runNode():
     if os.path.exists(file_paths.config):
-        cfg =  read_yaml_config()
-        public_node = cfg[0]
-        private_node = cfg[1]
-
-        ssl_cfg = cfg[2]
+        public_node, private_node, ssl_cfg = read_yaml_config()
 
         def start():
             rgbPrint(f"Public host: {public_node['url']}", "green", end="\n")
@@ -332,13 +328,8 @@ def runNode():
             uvicorn.run(app, host = private_node["host"], port = private_node["port"], ssl_keyfile = ssl_cfg["ssl_keyfile"], ssl_certfile = ssl_cfg["ssl_certfile"], ssl_ca_certs = ssl_cfg["ssl_ca_certs"])
 
         t1 = threading.Thread(target=start)
-        #t2 = threading.Thread(target=peer_discovery(public_node).peersearch())
-
         t1.start()
-        #t2.start()
-
         t1.join()
-        #t2.join()
 
     else:
         rgbPrint(f"Config file: {file_paths.config} does not exist!")
