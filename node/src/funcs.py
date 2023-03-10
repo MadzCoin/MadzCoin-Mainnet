@@ -55,18 +55,33 @@ def read_yaml_config(print_host = True):
         with open(file_paths.config, "r") as configs:
             global MOTD
             configyaml = yaml.safe_load(configs)
-            try:
-                nodeHost = configyaml["config"]["nodehost"]
-            except:
-                nodeHost = urllib.request.urlopen('https://ident.me').read().decode('utf8')
-                
-            nodePort = configyaml["config"]["nodeport"]
-            protocol = configyaml["config"]["protocol"]
-                
+
+            nodeURL = str(configyaml["config"]["public_url"])
+
+            if nodeURL.endswith("/"): nodeURL = nodeURL[:-1]
+
             try:
                 MOTD = configyaml["config"]["MOTD"]
             except:
                 pass
+
+            try:
+                privateHost = configyaml["config"]["private_host"]
+            except:
+                privateHost = "0.0.0.0"
+
+            try:
+                privatePort = configyaml["config"]["private_port"]
+            except:
+                port = ""
+
+                for char in nodeURL.split(":")[2]:
+                    if char.isdigit():
+                        port += char
+                    else:
+                        break
+
+                privatePort = int(float(port))
 
             try:
                 ssl_keyfile = configyaml["config"]["ssl_keyfile"]
@@ -78,4 +93,4 @@ def read_yaml_config(print_host = True):
                 ssl_ca_certs = None
                           
 
-            return ({"host": nodeHost, "port": int(configyaml["config"]["nodeport"]), "proto": protocol, "url": f"{protocol}://{nodeHost}:{nodePort}"}, {"ssl_keyfile": ssl_keyfile, "ssl_certfile": ssl_certfile, "ssl_ca_certs": ssl_ca_certs})
+            return ({"url": nodeURL}, {"host": privateHost, "port": privatePort}, {"ssl_keyfile": ssl_keyfile, "ssl_certfile": ssl_certfile, "ssl_ca_certs": ssl_ca_certs})

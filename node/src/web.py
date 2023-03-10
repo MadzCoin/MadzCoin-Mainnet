@@ -1,5 +1,5 @@
 """
-    Madzcoin Core V 0.12
+    Madzcoin Core V 0.14
     Copyright (c) 2023 The Madzcoin developers
     Distributed under the MIT software license, see the accompanying
     For copying see http://opensource.org/licenses/mit-license.php.
@@ -46,7 +46,7 @@ def getping():
 
 @app.get("/stats")
 def getStats():
-    _stats_ = {"coin": {"transactions": len(node.txsOrder), "supply": node.state.totalSupply, "holders": len(node.state.holders)}, "chain": {"length": len(node.state.beaconChain.blocks), "difficulty": node.state.beaconChain.difficulty, "cumulatedDifficulty": node.state.beaconChain.cummulatedDifficulty, "IdealBlockTime": IdealBlockTime, "LastBlockTime": node.state.beaconChain.getLastBeacon().timestamp - node.state.beaconChain.getBlockByHeightJSON(int(len(node.state.beaconChain.blocks)-2))["timestamp"], "blockReward": BlockReward,  "target": node.state.beaconChain.miningTarget, "lastBlockHash": node.state.beaconChain.getLastBeacon().proof}, "node": {"owner": PUB_KEY, "last_registration_tx": REG_TXID}}
+    _stats_ = {"coin": {"transactions": len(node.txsOrder), "supply": node.state.totalSupply, "holders": len(node.state.holders)}, "chain": {"length": len(node.state.beaconChain.blocks), "difficulty": node.state.beaconChain.difficulty, "cumulatedDifficulty": node.state.beaconChain.cummulatedDifficulty, "IdealBlockTime": IdealBlockTime, "LastBlockTime": node.state.beaconChain.getLastBeacon().timestamp - node.state.beaconChain.getBlockByHeightJSON(int(len(node.state.beaconChain.blocks)-2))["timestamp"], "blockReward": BlockReward,  "target": node.state.beaconChain.miningTarget, "lastBlockHash": node.state.beaconChain.getLastBeacon().proof}, "node": {"owner": PUB_KEY, "last_registration_tx": REG_TXID, "version": VER}}
     return jsonify(result=_stats_, success=True)
 
 # HTTP GENERAL GETTERS - pulled from `Node` class
@@ -211,8 +211,6 @@ def sendRawTransactions(tx: str = None):
                 txs.append(tx)
                 hashes.append(tx["hash"])
 
-
-
         else:               #Don't worry about checking if any nodes are ahead, just save it
             txs.append(tx)
             hashes.append(tx["hash"])
@@ -246,7 +244,7 @@ def getMiningInfo():
 def getChainLength():
     return jsonify(result=len(node.state.beaconChain.blocks), success=True)
 
-# SHARE PEERS (from `Node` class) / ADD incoming PEERS
+# Peers
 @app.get("/NodeVer")
 def nodever():
     return jsonify(result=VER, success=True)
@@ -269,27 +267,10 @@ def create_upload_file():
 
     return contents
 
-@app.get("/net/NewPeer/{newnodeurl}/{nodeport}/{proto}")
-def newnodes(newnodeurl: str, nodeport: str, proto: str):
-    node.addwebpeer(newnodeurl, nodeport, proto)
-
-
-@app.get("/net/NewPeerstatus/{nodeverifystatus}")
-def checkverify(nodeverifystatus: str):
-    if nodeverifystatus == "OK":
-        print("**Node is verified and Ready!**")
-    else:
-        rgbPrint("**Your database.json seems wrong will restart and resync for you!**", "red")
-        time.sleep(3)
-        os.remove("database.json")
-        exit()
-
-@app.get("/net/NewPeerok/{newverack}")
-def nodecompcheck(newverack: str ):
-    if newverack == "OK":
-        rgbPrint("New handshake established!", "yellow")
-    else:
-        rgbPrint("Node is incompatible with yours", "red")
+@app.post("/net/NewPeer")
+async def newnodes(request: fastapi.Request):
+    peer_url = (await request.body()).decode("utf-8") 
+    peer_discovery(read_yaml_config(print_host = False)[0]).check_add_peer(peer_url)
 
 
 class Web3Body(pydantic.BaseModel):
@@ -339,24 +320,16 @@ def handleWeb3Request(data: Web3Body):
 
 def runNode():
     if os.path.exists(file_paths.config):
-        cfg =  read_yaml_config()
-        public_node = cfg[0]
-
-        ssl_cfg = cfg[1]
+        public_node, private_node, ssl_cfg = read_yaml_config()
 
         def start():
             rgbPrint(f"Public host: {public_node['url']}", "green", end="\n")
             rgbPrint(f"Pruning Nodes from {file_paths.peerlist}", "green", end="\n"*2)
-            uvicorn.run(app,host = "0.0.0.0", port = public_node["port"], ssl_keyfile = ssl_cfg["ssl_keyfile"], ssl_certfile = ssl_cfg["ssl_certfile"], ssl_ca_certs = ssl_cfg["ssl_ca_certs"])
+            uvicorn.run(app, host = private_node["host"], port = private_node["port"], ssl_keyfile = ssl_cfg["ssl_keyfile"], ssl_certfile = ssl_cfg["ssl_certfile"], ssl_ca_certs = ssl_cfg["ssl_ca_certs"])
 
         t1 = threading.Thread(target=start)
-        #t2 = threading.Thread(target=peer_discovery(public_node).peersearch())
-
         t1.start()
-        #t2.start()
-
         t1.join()
-        #t2.join()
 
     else:
         rgbPrint(f"Config file: {file_paths.config} does not exist!")
