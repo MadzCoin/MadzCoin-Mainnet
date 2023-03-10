@@ -218,7 +218,6 @@ class Beacon(object):
         return "0x" + groestlcoin_hash.getHash(b"".join([skein.skein256(b).digest(), self.nonce.to_bytes(32, "big")]), 64).hex()
 
     def difficultyMatched(self):
-
         return int(self.proofOfWork(), 16) < int(self.miningTarget, 16)
 
     def exportJson(self):
@@ -454,7 +453,6 @@ class State(object):
             return False
         except:
             raise
-            return False
 
     def playTransaction(self, tx, showMessage):
         _tx = Transaction(tx)
@@ -494,12 +492,6 @@ class State(object):
         else:
             return None
 
-
-class Peer(object):
-    def __init__(self, url):
-        self.url = url
-
-
 class peer_discovery(object):
     def __init__(self, public_node):
         self.public_node = public_node
@@ -508,10 +500,13 @@ class peer_discovery(object):
         data = json.load(open(file_paths.peerlist, "r"))
         return data["Peers"]
 
-    def updatepeerfile(self, peerremove):
+    def remove_peer(self, peerremove):
         data = json.load(open(file_paths.peerlist, "r"))
-        data["Peers"].remove(peerremove)
-        json.dump(data, open(file_paths.peerlist, "w"))
+        try:
+            data["Peers"].remove(peerremove)
+            json.dump(data, open(file_paths.peerlist, "w"))
+        except ValueError:
+            pass
 
     def addtopeerlist(self, peer: str):
         data = json.load(open(file_paths.peerlist, "r"))
@@ -527,26 +522,13 @@ class peer_discovery(object):
 
         if url != self.public_node["url"]:
             try:
-                self.nodeping = requests.get(f"{url}/ping").json()
+                nodeping = requests.get(f"{url}/ping").json()
                 NodeVer = requests.get(f"{url}/NodeVer").json()
             except:
-                pass
+                nodeping = {"success": False}
 
-            
-            if self.nodeping["success"] == True and url != self.public_node["url"]:
-                if NodeVer["result"] == VER:
-                    if self.addtopeerlist(url): rgbPrint(f"Added new node: {url} ({NodeVer['result']})", "yellow")
-
-                    verack, verifystatus = "OK", "OK"
-                    requests.get(f"{url}/net/NewPeerok/{verack}")
-                    requests.get(f"{url}/net/NewPeerstatus/{verifystatus}")
-
-                else:
-                    rgbPrint("**Node's Version is not compatible with yours!**", "red")
-                    verack = "NO"
-                    requests.get(f"{url}/net/NewPeerok/{verack}")
-            else:
-                rgbPrint(f"{url} requested you to add their IP to {file_paths.peerlist} but it seems down", "red")
+            if nodeping["success"] == True and url != self.public_node["url"]:
+                self.addtopeerlist(url)
 
 
 class Node(object):
@@ -606,7 +588,7 @@ class Node(object):
 
     def initNode(self):
         self.keys = get_priv()
-
+        
         try:
             self.loadDB()
         except:
@@ -642,11 +624,11 @@ class Node(object):
                 self.state.playTransaction(tx, True)
                 self.propagateTransactions([tx])
                 _counter += 1
-                if print:
-                    rgbPrint(f"Successfully saved transaction: {tx['hash']} \n", "honeydew2")
-        if _counter > 0:
-            if print:
-                rgbPrint(f"Successfully saved {_counter} transactions!", "orchid")
+
+                if print: rgbPrint(f"Successfully saved transaction: {tx['hash']} \n", "honeydew2")
+
+        if _counter > 0 and print: rgbPrint(f"Successfully saved {_counter} transactions!", "orchid")
+
         self.saveDB()
 
     def saveDB(self):
@@ -676,25 +658,20 @@ class Node(object):
         return changed_anything
 
 # REQUESTING DATA FROM PEERS
-    """
-    def checkPeers(self):
-        for peer in self.goodPeers:
-            peerver = requests.get(f"{peer}/NodeVer").json()["result"]
-            if peerver == VER:
-                rgbPrint(f"{peer} is the same version as you (V{VER})", "green")
-    """
     def newpeersend(self): #Add your node, to the peers
         self.checkGuys()
         for peer in self.goodPeers:
-            peersonline = requests.get(f"{peer}/net/getOnlinePeers").json()["result"]
-            if peer != self.public_node["url"] and self.public_node["url"] not in peersonline: # Send add peer request only if its not itself or its not added already!
-                try:
-                    requests.post(f"{peer}/net/NewPeer", data = self.public_node["url"])
-                except:
-                    pass
+            try:
+                peersonline = requests.get(f"{peer}/net/getOnlinePeers").json()["result"]
+                if peer != self.public_node["url"] and self.public_node["url"] not in peersonline: # Send add peer request only if its not itself or its not added already!
+                    try:
+                        requests.post(f"{peer}/net/NewPeer", data = self.public_node["url"])
+                    except:
+                        pass
+            except:
+                pass
 
     def askForMorePeers(self):
-        public_node = read_yaml_config(print_host=False)[0]
         for peer in self.peerlist:
             try:
                 obtainedPeers = requests.get(f"{peer}/net/getOnlinePeers")
@@ -703,25 +680,11 @@ class Node(object):
                 if peerver == VER:
 
                     if obtainedPeers.status_code == 200:
-                        obtainedPeers = obtainedPeers.json()
-                        obpeers = obtainedPeers["result"]
-                        obpeersn = str(obpeers)[1:-1]
-                        obpeersjson = str(obpeersn)[1:-1]
-
-                        if obpeersjson != "" and obpeersjson != public_node["url"] and obpeersjson not in self.peerlist:
-                            rgbPrint("Pinging new node: " + obpeersjson, "yellow")
-                        else:
-                            pass
-
-                        if not(obpeersjson in self.peerlist) and obpeersjson != public_node["url"] and obpeersjson != "": #If node is not in the peerlist, and is not trying to add itself
-                            self.peerlist.append(obpeersjson)
-                            peer_discovery("").addtopeerlist(obpeersjson)
+                        obtainedPeers = obtainedPeers.json() 
+                        obpeersjson = str(str(obtainedPeers["result"])[1:-1])[1:-1]
+                        self.peer_discovery.addtopeerlist(obpeersjson)
                 else:
-                    rgbPrint(f"{peer} is on a different version to your node!", "red")
-                    try:
-                        peer_discovery("").updatepeerfile(peer)
-                    except:
-                        pass
+                    self.peer_discovery.remove_peer(peer)
 
             except requests.exceptions.RequestException:
                 pass
@@ -731,8 +694,7 @@ class Node(object):
             try:
                 requests.get(f"{peer}/ping")
             except:
-                rgbPrint(f"{peer} seems offline! removing now!", "red")
-                peer_discovery("").updatepeerfile(peer)
+                self.peer_discovery.remove_peer(peer)
                 self.peerlist.remove(peer)
                 self.goodPeers.remove(peer)
 
@@ -746,8 +708,6 @@ class Node(object):
                         self.goodPeers.append(peer)
                     else:
                         self.peerlist.remove(peer)
-                        peer_discovery("").updatepeerfile(peer)
-                        pass
             except:
                 pass
 
@@ -778,8 +738,7 @@ class Node(object):
         return txs
 
     def pullChildsOfATx(self, txid):
-        vwjnvfeuuqubb = self.state.txChilds.get(txid) or []
-        children = vwjnvfeuuqubb.copy()
+        children = self.state.txChilds.get(txid) or [].copy()
         for peer in self.goodPeers:
             try:
                 _childs = requests.get(f"{peer}/accounts/txChilds/{txid}").json()["result"]

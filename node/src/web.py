@@ -46,7 +46,7 @@ def getping():
 
 @app.get("/stats")
 def getStats():
-    _stats_ = {"coin": {"transactions": len(node.txsOrder), "supply": node.state.totalSupply, "holders": len(node.state.holders)}, "chain": {"length": len(node.state.beaconChain.blocks), "difficulty": node.state.beaconChain.difficulty, "cumulatedDifficulty": node.state.beaconChain.cummulatedDifficulty, "IdealBlockTime": IdealBlockTime, "LastBlockTime": node.state.beaconChain.getLastBeacon().timestamp - node.state.beaconChain.getBlockByHeightJSON(int(len(node.state.beaconChain.blocks)-2))["timestamp"], "blockReward": BlockReward,  "target": node.state.beaconChain.miningTarget, "lastBlockHash": node.state.beaconChain.getLastBeacon().proof}, "node": {"owner": PUB_KEY, "last_registration_tx": REG_TXID}}
+    _stats_ = {"coin": {"transactions": len(node.txsOrder), "supply": node.state.totalSupply, "holders": len(node.state.holders)}, "chain": {"length": len(node.state.beaconChain.blocks), "difficulty": node.state.beaconChain.difficulty, "cumulatedDifficulty": node.state.beaconChain.cummulatedDifficulty, "IdealBlockTime": IdealBlockTime, "LastBlockTime": node.state.beaconChain.getLastBeacon().timestamp - node.state.beaconChain.getBlockByHeightJSON(int(len(node.state.beaconChain.blocks)-2))["timestamp"], "blockReward": BlockReward,  "target": node.state.beaconChain.miningTarget, "lastBlockHash": node.state.beaconChain.getLastBeacon().proof}, "node": {"owner": PUB_KEY, "last_registration_tx": REG_TXID, "version": VER}}
     return jsonify(result=_stats_, success=True)
 
 # HTTP GENERAL GETTERS - pulled from `Node` class
@@ -244,7 +244,7 @@ def getMiningInfo():
 def getChainLength():
     return jsonify(result=len(node.state.beaconChain.blocks), success=True)
 
-# SHARE PEERS (from `Node` class) / ADD incoming PEERS
+# Peers
 @app.get("/NodeVer")
 def nodever():
     return jsonify(result=VER, success=True)
@@ -271,24 +271,6 @@ def create_upload_file():
 async def newnodes(request: fastapi.Request):
     peer_url = (await request.body()).decode("utf-8") 
     peer_discovery(read_yaml_config(print_host = False)[0]).check_add_peer(peer_url)
-
-
-@app.get("/net/NewPeerstatus/{nodeverifystatus}")
-def checkverify(nodeverifystatus: str):
-    if nodeverifystatus == "OK":
-        print("**Node is verified and Ready!**")
-    else:
-        rgbPrint("**Your database.json seems wrong will restart and resync for you!**", "red")
-        time.sleep(3)
-        os.remove("database.json")
-        exit()
-
-@app.get("/net/NewPeerok/{newverack}")
-def nodecompcheck(newverack: str ):
-    if newverack == "OK":
-        rgbPrint("New handshake established!", "yellow")
-    else:
-        rgbPrint("Node is incompatible with yours", "red")
 
 
 class Web3Body(pydantic.BaseModel):
