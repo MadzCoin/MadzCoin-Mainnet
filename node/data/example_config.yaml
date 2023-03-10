@@ -3,12 +3,12 @@ config:
     public_url: "http://cum.fi:6969" #URL of your node, which can be accessed externally
     
     #OPTIONAL:
-    private_port: 420 #Local port, use this if you portforward. If undefined, pulls it from public_url
-    private_host: "0.0.0.0" #Allowed subnets, by default 0.0.0.0
+        # private_port: 420 #Local port, use this if you portforward. If undefined, pulls it from public_url
+        # private_host: "0.0.0.0" #Allowed subnets, by default 0.0.0.0
     
-    ssl_keyfile: "/home/redeye/certificates/main/private.key"
-    ssl_certfile: "/home/redeye/certificates/main/certificate.crt"
-    ssl_ca_certs: "/home/redeye/certificates/main/ca_bundle.crt"
+        # ssl_keyfile: "/home/redeye/certificates/main/private.key"
+        # ssl_certfile: "/home/redeye/certificates/main/certificate.crt"
+        # ssl_ca_certs: "/home/redeye/certificates/main/ca_bundle.crt"
     
     MOTD: "Yo' madzcoin is awesome, I hope it doesn't fork BTC :("
     
