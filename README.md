@@ -106,7 +106,7 @@ $ cd node && python3 start.py #	start.bat on Windows
 This project is under the MIT license. For more details, see the [LICENSE](LICENSE.md) file.
 
 
-Made with :heart: by [SuperPythonGuy](https://github.com/superpythonguy) and [The Red Eye Studio](https://github.com/the-red-eye-studio).
+Made with :heart: by [SuperPythonGuy](https://github.com/superpythonguy) and ~~[The Red Eye Studio](https://github.com/the-red-eye-studio)~~ (I got banned ¯\_(ツ)_/¯).
 
 ## Thanks to those who've hosted a Node! ##
 This project would've not reached this far without your support! :heart:
